@@ -1,4 +1,4 @@
-Seed = 7983276
+Seeds = 798327 4 3
 BoxSize = 20
 Species = 6
 Delta = 1
@@ -21,5 +21,5 @@ CompetitionCorr = 0.0
 Imbalance = 0.5
 Transitivity = 0.
 OutfileBase = grid
-OutfileDir = test/
+OutfileDir = diretest/
 MaxTimeStep = 1

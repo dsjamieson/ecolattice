@@ -16,7 +16,9 @@ class Simulation {
 
 
 	private:
-		int num_species, box_size, num_steps, delta, seed, max_time_step;
+		int num_species, box_size, num_steps, delta, max_time_step;
+		int *seeds;
+		std::string parameter_filename;
 		double grid_occupancy, imbalance, transitivity, fecundity_imbalance_mean, growth_imbalance_mean;
 		double fecundity_relative_intransitivity, growth_relative_intransitivity, fecundity_growth_correlation;
 		double germination_probability, juvenile_survival_probability, adult_survival_probability;
@@ -30,15 +32,16 @@ class Simulation {
 		int **box, **next_box;
 		double ***dispersal_box, ***next_dispersal_box;
 
-		void seedGenerator();
+		void seedGenerator(int num_seeds);
 		std::string trimstr(std::string str);
 
-		void getParameter(int *value, std::string parameter_name, std::string filename, int essential);
-		void getParameter(double *value, std::string parameter_name, std::string filename, int essential);
-		void getParameter(double *value_array, int n, std::string parameter_name, std::string filename, int essential);
-		void getParameter(std::string *value, std::string parameter_name, std::string filename, int essential);
+		void getSeeds();
+		void getParameter(int *value, std::string parameter_name, int essential);
+		void getParameter(double *value, std::string parameter_name, int essential);
+		void getParameter(double *value_array, int n, std::string parameter_name, int essential);
+		void getParameter(std::string *value, std::string parameter_name, int essential);
 		void initializeNormalRandomArray(double *vector, double *mean, double *sdev, int length);
-		void setRandomParameter(double *intrinsic_fecundity, int num_species, std::string parameter_name, std::string parameter_filename);
+		void setRandomParameter(double *intrinsic_fecundity, int num_species, std::string parameter_name);
 
 		void initializeUniformCompetition();
 		void initializeTNormalCompetition();

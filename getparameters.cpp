@@ -7,7 +7,56 @@
 #include <random>
 #include "simulation.h"
 
-void Simulation::getParameter(int *value, std::string parameter_name, std::string filename, int essential ) {
+void Simulation::getSeeds() {
+
+	int i;
+	int count = 0;
+
+	std::string parameter_name = "Seeds";
+	std::string line;
+	std::ifstream pfile;
+	pfile.open(parameter_filename);
+	if( pfile.is_open()) {
+		while( getline(pfile, line) ){
+			if( parameter_name.compare(line.substr(0,line.find(" = "))) == 0 ) {
+				std::string pstring;
+				std::istringstream pstrings( line.substr(line.find("=")+2, line.length())  );
+				while( getline( pstrings, pstring, ' ')  )
+					count++;
+			
+				if(count!=0) {
+					i=0;
+					seeds = new int[count];
+					pstrings.clear();
+					pstrings.seekg(0,pstrings.beg);
+					while( getline( pstrings, pstring, ' ')  ) {
+						seeds[i] = stoi(pstring);
+						i++;
+					}
+
+				}
+				
+				break;
+			}
+		}
+	}
+	else{
+		fprintf(stderr, "Parameter file not found\n");
+		exit(0);
+	}
+
+	if(count==0){
+		fprintf(stderr, "Error, no Seeds given, cannot seed random generator\n");
+			exit(0);
+	}
+
+	seedGenerator(count);
+
+	return;
+
+}
+
+void Simulation::getParameter(int *value, std::string parameter_name, int essential ) {
 
 	// Sets value from parameter name in parameter file
 
@@ -16,7 +65,7 @@ void Simulation::getParameter(int *value, std::string parameter_name, std::strin
 	std::string line;
 	std::string value_string;
 	std::ifstream pfile;
-	pfile.open(filename);
+	pfile.open(parameter_filename);
 	if( pfile.is_open()) {
 		while( getline(pfile, line) ){
 			compstr = trimstr(line.substr(0,line.find("=")));
@@ -51,7 +100,7 @@ void Simulation::getParameter(int *value, std::string parameter_name, std::strin
 }
 
 
-void Simulation::getParameter(double *value, std::string parameter_name, std::string filename, int essential) {
+void Simulation::getParameter(double *value, std::string parameter_name, int essential) {
 
 	// Sets value from parameter name in parameter file
 
@@ -60,7 +109,7 @@ void Simulation::getParameter(double *value, std::string parameter_name, std::st
 	
 	std::string line;
 	std::ifstream pfile;
-	pfile.open(filename);
+	pfile.open(parameter_filename);
 	if( pfile.is_open()) {
 		while( getline(pfile, line) ){
 			compstr = trimstr(line.substr(0,line.find("=")));
@@ -87,7 +136,7 @@ void Simulation::getParameter(double *value, std::string parameter_name, std::st
 
 }
 
-void Simulation::getParameter(std::string *value, std::string parameter_name, std::string filename, int essential) {
+void Simulation::getParameter(std::string *value, std::string parameter_name, int essential) {
 
 	// Sets value from parameter name in parameter file
 
@@ -96,7 +145,7 @@ void Simulation::getParameter(std::string *value, std::string parameter_name, st
 	
 	std::string line;
 	std::ifstream pfile;
-	pfile.open(filename);
+	pfile.open(parameter_filename);
 	if( pfile.is_open()) {
 		while( getline(pfile, line) ){
 			compstr = trimstr(line.substr(0,line.find("=")));
@@ -123,7 +172,7 @@ void Simulation::getParameter(std::string *value, std::string parameter_name, st
 
 }
 
-void Simulation::getParameter(double *value_array, int n, std::string parameter_name, std::string filename, int essential) {
+void Simulation::getParameter(double *value_array, int n, std::string parameter_name, int essential) {
 
 	// Sets array values from parameter name in parameter file
 
@@ -132,7 +181,7 @@ void Simulation::getParameter(double *value_array, int n, std::string parameter_
 
 	std::string line;
 	std::ifstream pfile;
-	pfile.open(filename);
+	pfile.open(parameter_filename);
 	if( pfile.is_open()) {
 		while( getline(pfile, line) ){
 			if( parameter_name.compare(line.substr(0,line.find(" = "))) == 0 ) {
@@ -176,26 +225,26 @@ void Simulation::getParameter(double *value_array, int n, std::string parameter_
 
 }
 
-void Simulation::initializeNormalRandomArray(double *vector, double *mean, double *sdev, int length) {
+void Simulation::initializeNormalRandomArray(double *array, double *mean, double *sdev, int length) {
 
-	// Sets vector elements pulled from normal distribtions defined by mean and sdev arrays
+	// Sets array elements pulled from normal distribtions defined by mean and sdev arrays
 
 	int i;
 	for(i=0;i<length;i++){
 		std::normal_distribution<float> ndist(mean[i], sdev[i]);
-		vector[i] = fabs(ndist(global_random_generator));
+		array[i] = fabs(ndist(global_random_generator));
 	}
 
 	return;
 }
 
-void Simulation::setRandomParameter(double* parameter_value, int num_species, std::string parameter_name, std::string parameter_filename){
+void Simulation::setRandomParameter(double* parameter_value, int num_species, std::string parameter_name){
 
 	double * mean = new double[num_species];
 	double * sdev = new double[num_species];
 
-	getParameter(mean, num_species, parameter_name, parameter_filename, 1);
-	getParameter(sdev, num_species, parameter_name+"Sdev", parameter_filename, 1);
+	getParameter(mean, num_species, parameter_name, 1);
+	getParameter(sdev, num_species, parameter_name+"Sdev", 1);
 
 	initializeNormalRandomArray(parameter_value, mean, sdev, num_species);
 

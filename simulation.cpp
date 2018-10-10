@@ -8,14 +8,14 @@
 #include <sstream>
 #include <cmath>
 #include <random>
+#include <sys/stat.h>
 #include "simulation.h"
 
-Simulation::Simulation(std::string parameter_filename) {
+Simulation::Simulation(std::string filename) {
 	
 	int i, j;
 
 	//defaults
-	seed = time(0);
 	delta = 1;
 	competition_type = "Uniform";
 	competition_upper_bound = 0;
@@ -23,35 +23,36 @@ Simulation::Simulation(std::string parameter_filename) {
 	competition_correlation = 0;
 	imbalance = 0.5;
 	transitivity = 0.;
+	parameter_filename = filename;
 
 	// Read input
-	getParameter(&seed, "Seed", parameter_filename, 0);
-	getParameter(&box_size, "BoxSize", parameter_filename, 1);
-	getParameter(&num_species, "Species", parameter_filename, 1);
-	getParameter(&delta, "Delta", parameter_filename, 0);
-	getParameter(&max_time_step, "MaxTimeStep", parameter_filename, 1);
-	getParameter(&grid_occupancy, "GridOccupancy", parameter_filename, 1);
-	getParameter(&germination_probability, "GerminationProbability", parameter_filename, 1);
+	getSeeds();
+	getParameter(&box_size, "BoxSize", 1);
+	getParameter(&num_species, "Species", 1);
+	getParameter(&delta, "Delta", 0);
+	getParameter(&max_time_step, "MaxTimeStep", 1);
+	getParameter(&grid_occupancy, "GridOccupancy", 1);
+	getParameter(&germination_probability, "GerminationProbability", 1);
 	if(germination_probability > 1 || germination_probability < 0){
 		fprintf(stdout, "GerminationProbability must be between 0 and 1\n");
 		exit(0);
 	}
-	getParameter(&juvenile_survival_probability, "JuvenileSurvival", parameter_filename, 1);
+	getParameter(&juvenile_survival_probability, "JuvenileSurvival", 1);
 	if(juvenile_survival_probability > 1 || juvenile_survival_probability < 0){
 		fprintf(stdout, "JuvenileSurvival must be between 0 and 1\n");
 		exit(0);
 	}
-	getParameter(&adult_survival_probability, "AdultSurvival", parameter_filename, 1);
+	getParameter(&adult_survival_probability, "AdultSurvival", 1);
 	if(adult_survival_probability > 1 || adult_survival_probability < 0){
 		fprintf(stdout, "AdultSurvival must be between 0 and 1\n");
 		exit(0);
 	}
-	getParameter(&maximum_competition, "MaximumCompetition", parameter_filename, 1);
+	getParameter(&maximum_competition, "MaximumCompetition", 1);
 	if(maximum_competition > 1 || maximum_competition < 0){
 		fprintf(stdout, "MaximumCompetition must be between 0 and 1\n");
 		exit(0);
 	}
-	getParameter(&dispersal_probability, "DispersalProbability", parameter_filename, 1);
+	getParameter(&dispersal_probability, "DispersalProbability", 1);
 	if(dispersal_probability > 1 || dispersal_probability < 0){
 		fprintf(stdout, "DispersalProbability must be between 0 and 1\n");
 		exit(0);
@@ -60,27 +61,27 @@ Simulation::Simulation(std::string parameter_filename) {
 	species_occupancy = new double[num_species];
 	dispersal_length = new double[num_species];
 	intrinsic_fecundity = new double[num_species];
-	getParameter(species_occupancy, num_species, "SpeciesOccupancy", parameter_filename,  1);
+	getParameter(species_occupancy, num_species, "SpeciesOccupancy",  1);
 	if(species_occupancy[0] == 1. && species_occupancy[num_species-1] == 1. ) {
 		for(i=0; i<num_species; i++)
 			species_occupancy[i] = species_occupancy[i]/(num_species);
 	}	
-	setRandomParameter(dispersal_length, num_species, "DispersalLength", parameter_filename);
-	setRandomParameter(intrinsic_fecundity, num_species, "Fecundity", parameter_filename);
+	setRandomParameter(dispersal_length, num_species, "DispersalLength");
+	setRandomParameter(intrinsic_fecundity, num_species, "Fecundity");
 
-	getParameter(&competition_type, "CompetitionType", parameter_filename, 0);
-	getParameter(&competition_upper_bound, "CompetitionUpper", parameter_filename, 0);
-	getParameter(&competition_lower_bound, "CompetitionLower", parameter_filename, 0);
+	getParameter(&competition_type, "CompetitionType", 0);
+	getParameter(&competition_upper_bound, "CompetitionUpper", 0);
+	getParameter(&competition_lower_bound, "CompetitionLower", 0);
 	if(competition_type.compare("TNormal")==0)
-		getParameter(&competition_sdev, "CompetitionSdev", parameter_filename, 1);
+		getParameter(&competition_sdev, "CompetitionSdev", 1);
 	
-	getParameter(&competition_correlation, "CompetitionCorr", parameter_filename, 0);
+	getParameter(&competition_correlation, "CompetitionCorr", 0);
 	if(fabs(competition_correlation) > 1.) {
 		fprintf(stderr, "Error, CompetitionCorr must be between -1 and 1\n");
 		exit(0);
 	}
-	getParameter(&imbalance, "Imbalance", parameter_filename, 0);
-	getParameter(&transitivity, "Transitivity", parameter_filename, 0);
+	getParameter(&imbalance, "Imbalance", 0);
+	getParameter(&transitivity, "Transitivity", 0);
 	if( ( competition_correlation!=0 + imbalance!=0.5 + transitivity != 0 ) > 1  ) {
 		fprintf(stderr, "Error, only one of CompetitionCorr, Imbalance, and Transitivty can be set\n");
 		exit(0);
@@ -95,15 +96,17 @@ Simulation::Simulation(std::string parameter_filename) {
 		fprintf(stderr, "Error, Transitivity must be -1, 0 or 1\n");
 		exit(0);
 	}
-	getParameter(&outfile_base, "OutfileBase", parameter_filename, 1);
-	getParameter(&outfile_dir, "OutfileDir", parameter_filename, 0);
-	if(outfile_dir.size()!=0)
-		outfile_base = outfile_dir + "/" + outfile_base;
-
-
-
-	//seedGenerator();
-	global_random_generator.seed(seed);
+	getParameter(&outfile_base, "OutfileBase", 1);
+	getParameter(&outfile_dir, "OutfileDir", 0);
+	if(outfile_dir.size()!=0){
+		struct stat buf;
+		if(stat(outfile_dir.c_str(), &buf)==0)
+			outfile_base = outfile_dir + "/" + outfile_base;
+		else {
+			fprintf(stdout, "Error, no directory %s\n", outfile_dir.c_str());
+			exit(0);
+		}
+	}
 
 	// Initializations
 	if( competition_type.compare("Uniform") == 0  ) {
@@ -145,19 +148,20 @@ Simulation::Simulation(std::string parameter_filename) {
 
 }
 
-void Simulation::seedGenerator() {
+void Simulation::seedGenerator(int num_seeds) {
 
-	int vec[] = {1,2,3,5,5};
-    std::seed_seq seq(vec, vec+5);
+    std::seed_seq seq(seeds, seeds+num_seeds);
     std::vector<std::uint32_t> seeds(std::mt19937::state_size);
     seq.generate(seeds.begin(), seeds.end());
 	global_random_generator.seed( seq );
+
+	return;
 
 }
 
 int Simulation::getNewSeed(int i) {
 	
-	return seed+i;
+	return i;
 
 	}
 
@@ -166,14 +170,9 @@ void Simulation::initializeBox() {
 	int i,j;
 
 	// Initializes box with random distribution of the species
-
-	std::vector<double> sp_oc(num_species, 1.);
-	for(i=0;i<num_species;i++)
-		sp_oc[i] = species_occupancy[i];
-
 	std::bernoulli_distribution stage_dist(0.5);
 	std::bernoulli_distribution occupy_dist(grid_occupancy);
-	std::discrete_distribution<int> species_dist(sp_oc.begin(), sp_oc.end());
+	std::discrete_distribution<int> species_dist(species_occupancy, species_occupancy+num_species);
 
 
 	box = new int *[box_size];
@@ -287,15 +286,8 @@ void Simulation::updateSingleSite(int i, int j, std::mt19937& local_random_gener
 		std::bernoulli_distribution germdist(1. - pow(1.- germination_probability, total_seeds ));
 		
 		if(germdist(local_random_generator)) {
-			
-			std::vector<double> species_seeds(num_species, 1.);
-			for(k=0;k<num_species;k++)
-				species_seeds[k] = dispersal_box[i][j][k];
-
-			std::discrete_distribution<int> species_dist(species_seeds.begin(), species_seeds.end());
-
+			std::discrete_distribution<int> species_dist(dispersal_box[i][j], dispersal_box[i][j]+num_species);
 			next_box[i][j] = - species_dist(local_random_generator);
-
 		}
 
 	}
