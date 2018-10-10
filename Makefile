@@ -1,5 +1,5 @@
 CXX = g++ 
-CXXFLAGS = -std=c++11 -fopenmp
+CXXFLAGS = -std=c++11
 SOURCE = main.cpp simulation.cpp getparameters.cpp competition.cpp
 EXEC = ecolattice
 
