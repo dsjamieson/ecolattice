@@ -142,66 +142,6 @@ Simulation::Simulation(std::string parameter_filename) {
 	initializeNextDispersalBox();
 	saveCompetition();
 	saveProperties();
-	exit(0);
-
-	if(0) {
-		
-
-		fprintf(stdout, "\nIntrinsic fecundity:\n");
-		for(i=0;i<num_species;i++) {
-				fprintf(stdout, " %.3f ", intrinsic_fecundity[i] );
-		}
-		
-
-		fprintf(stdout, "\n\nDispersal length:\n");
-		for(i=0;i<num_species;i++) {
-				fprintf(stdout, " %.3f ", dispersal_length[i] );
-		}
-
-
-		fprintf(stdout, "\n\nCompetition fecundity:\n");
-		for(i=0;i<num_species;i++) {
-			for(j=0;j<num_species;j++) {
-				if(competition_fecundity[i][j] >= 0  )
-					fprintf(stdout, " %.3f ", competition_fecundity[i][j] );
-				else
-					fprintf(stdout, "%.3f ", competition_fecundity[i][j] );
-			}
-			fprintf(stdout,"\n");
-
-		}
-
-		fprintf(stdout, "\nCompetition growth:\n");
-		for(i=0;i<num_species;i++) {
-			for(j=0;j<num_species;j++) {
-				if(competition_growth[i][j] >= 0  )
-					fprintf(stdout, " %.3f ", competition_growth[i][j] );
-				else
-					fprintf(stdout, "%.3f ", competition_growth[i][j] );
-			}
-			fprintf(stdout,"\n");
-
-		}
-
-		fprintf(stdout, "\nFecundity imbalance mean: %.3f\n", fecundity_imbalance_mean);
-		fprintf(stdout, "Growth imbalance mean: %.3f\n", growth_imbalance_mean);
-		fprintf(stdout, "\nFecundity relative intransitivity: %.3f\n", fecundity_relative_intransitivity);
-		fprintf(stdout, "Growth relative intransitivity: %.3f\n", growth_relative_intransitivity);
-		fprintf(stdout, "Fecundity-growth cross correlation: %.3f\n", fecundity_growth_correlation);
-		
-
-		fprintf(stdout, "\nBox:\n");
-		for(i=0; i<box_size; i++){
-			for(j=0; j<box_size; j++){
-				if(box[i][j] < 0)
-					fprintf(stdout, "%d ", box[i][j]);
-				else
-					fprintf(stdout, " %d ", box[i][j]);
-			}
-			fprintf(stdout,"\n");
-		}
-
-	}
 
 }
 
