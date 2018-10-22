@@ -1,0 +1,37 @@
+Seeds = 12102 122 13372 124 127 972231	# List of seeds, positive integers	
+
+BoxSize = 20 					# Size of box sides 
+Species = 6						# Number of species 
+Delta = 1						# Neighborhood size parameter
+MaxTimeStep = 200				# Final time step of simulation
+InitialOccupancy = 0.5	 		# Fraction of occupied sites at initial time
+GerminationProbability = 0.2	# Probability for germination to occur at a site for any species
+OutfileBase = test 				# Initial string in output filenames
+OutfileDir = test_results		# Directory for output files
+
+SpeciesOccupancy = 1. 		# Initial fraction of sites occupied by each species, weights, no Sdev
+JuvenileSurvival = 0.2  	# Bernoulli probability of a juvenile individual of species surviving a time step
+JuvenileSurvivalSdev =
+AdultSurvival = 0.9  		# Bernouli probability of an adult individual of species surviving a time step
+AdultSurvivalSdev =
+MaximumCompetition = 0.8 	# Maximum amount of growth competition on individual of species from neighbors
+MaximumCompetitionSdev = 
+DispersalProbability = 0.1 	# Probability that an individual of species disperses seeds at distance DispersalLength during time step
+DispersalProbabilitySdev =
+DispersalLength = 5 		# Length scale in lattice spacing for effective seed dispersal for an individual of species
+DispersalLengthSdev =
+Fecundity = 12 				# Maximum seeds produced by individual of species during dispersal
+FecunditySdev =
+
+CompetitionLower = -1. 		# Lower bound on competition matrix elements
+CompetitionUpper = 0.5 		# Upper bound on competition matrix elements
+CompetitionType = Uniform	# Type of distribution for competition matrix elements, Uniform or Tnormal
+CompetitionMean = -0.5 		# Optional, only for TNormal
+CompetitionSdev = 0.2		# Required for TNormal
+
+# Only one of the following can be set to a non-default value
+CompetitionCorr = 0.1 			# Correlation between fecundity and growth competition, default 0.0
+Imbalance = 0.5					# Mean relative difference in strength of competition between pairs, default 0.5 
+FecundityTransitivity = 0.0		# Transitivity type 1 (transitive), -1 (maximal intransitivity), or default 0 (random) 
+GrowthTransitivity = 0.0		# Transitivity type 1 (transitive), -1 (maximal intransitivity), or default 0 (random)
+RelativeHierarchy = 1.0			# 1 for equal, -1 for inverted, 0 for independent Fecundity/Growth Transitivity
