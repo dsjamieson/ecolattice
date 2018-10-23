@@ -1,11 +1,11 @@
 
 	 /**********************************************************
+	 * ecolattice
+	 *						D.S Jamieson and N.L Kinlock, 2018			
 	 *
-	 *			D.S Jamieson and N.L Kinlock, 2018			
-	 *
-	 *	The Simulation class constructor is defined here, 
-	 *	requiring an imput file containing the simulation 
-	 *	parameters. Public methods for getting, setting and
+	 *	The Simulation class constructor is defined here.
+	 *	requires an imput file containing the simulation 
+	 *	parameters. public methods for getting, setting and
 	 *	adding to values of private arrays and variable are 
 	 *	here, as well as the methods for saving output.
 	 *
@@ -18,7 +18,7 @@ Simulation::Simulation(std::string filename, int p_id) {
 	id = p_id;
 	random_count = 0;
 
-	//defaults
+	// default parameters
 	restart_time = 0;
 	delta = 1;
 	competition_type = "Uniform";
@@ -31,94 +31,92 @@ Simulation::Simulation(std::string filename, int p_id) {
 	fecundity_growth_relative_hierarchy = 0.;
 	parameter_filename = filename;
 
-	// Checks for any obvious format issues with input parameter file 
+	// checks for any obvious format issues with input parameter file 
 	checkInputFormat();
 
-	// Checks if this is continuing a previous simulation from time step retart_time
+	// checks if this simulation is a continuation of  a previous simulation given time step (parameter: restart_time)
 	getParameter(&restart_time, "RestartTime", 0);
-	if( restart_time < 0) {
-		if(id==0)
+	if (restart_time < 0) {
+		if (id == 0)
 			fprintf(stderr, "Error, RestartTime must be positive\n");
 		exit(0);
 	}
 
-	if(restart_time != 0) {
+	if (restart_time != 0) {
 		getParameter(&competition_filename, "CompetitionFile", 1);
 	}
 	else {
 		getParameter(&competition_filename, "CompetitionFile", 0);
 	}
 
-	// Simulation parameters
+	// parameters read from file (argument: filename)
 	getParameter(&box_size, "BoxSize", 1);
-	if( box_size < 0) {
-		if(id==0)
+	if (box_size < 0) {
+		if (id == 0)
 			fprintf(stderr, "Error, BoxSize must be positive\n");
 		exit(0);
 	}
-
 	getParameter(&num_species, "Species", 1);
 	getParameter(&delta, "Delta", 0);
-	if(delta < 0 || delta > box_size - 1) {
-		if(id==0)
+	if (delta < 0 || delta > box_size - 1) {
+		if (id == 0)
 			fprintf(stderr, "Error, Delta must be greater than zero and less than BoxSize\n");
 		exit(0);
 	}
 	getParameter(&max_time_step, "MaxTimeStep", 1);
 	getParameter(&initial_occupancy, "InitialOccupancy", 1);
-	if(initial_occupancy > 1 || initial_occupancy < 0){
-		if(id==0)
+	if (initial_occupancy > 1 || initial_occupancy < 0) {
+		if (id == 0)
 			fprintf(stderr, "Error, InitialOccupancy must be between 0 and 1\n");
 		exit(0);
 	}
 	getParameter(&germination_probability, "GerminationProbability", 1);
-	if(initial_occupancy > 1 || initial_occupancy < 0){
-		if(id==0)
+	if (initial_occupancy > 1 || initial_occupancy < 0) {
+		if (id == 0)
 			fprintf(stderr, "Error, GerminationProbability must be between 0 and 1\n");
 		exit(0);
 	}
 	getParameter(&outfile_base, "OutfileBase", 1);
 	getParameter(&outfile_dir, "OutfileDir", 0);
-	if(outfile_dir.size()!=0){
+	if (outfile_dir.size() != 0) {
 		struct stat buf;
-		if(stat(outfile_dir.c_str(), &buf)==0)
+		if (stat(outfile_dir.c_str(), &buf) == 0)
 			outfile_base = outfile_dir + "/" + outfile_base;
 		else {
-			if(id==0)
+			if (id == 0)
 				fprintf(stderr, "Error, no directory %s\n", outfile_dir.c_str());
 			exit(0);
 		}
 	}
 
 
-	// Allocate simulation arrays and seed random generator
-	max_random_count = (int64_t) 1000.*(4.*num_species*num_species + 5.*box_size*box_size);
+	// allocate simulation arrays and seed random generator
+	max_random_count = (int64_t) 1000. * (4. * num_species * num_species + 5. * box_size * box_size);  // the maximum number of random draws used by the RNG in this simulation
 	allocSim();
 	getSeeds();
 
-	
-	if( restart_time != 0) {
-		// Continue previous simulation
+	if (restart_time != 0) {
+		// continue a previous failed simulation or extend a previous simulation
 		initializeRestartSimulation();
 	}
-	else if( competition_filename.size() != 0  ) {
-		// Use specific competition parameters
+	else if (competition_filename.size() != 0) {
+		// run simulation with  pre-defined competition parameters but new initial conditions
 		initializeRedoSimulation();
 	}
 	else {
-		// Start a new simulation
+		// start a new simulation
 		initializeRandomSimulation();
 	}
-
-
 }
 
 
 void Simulation::initializeRandomSimulation() {
+	/* initializes the simulation box with species locations, and draws random variates for species-specific parameters
+	(dispersal, competition, etc.). also checks that parameter values are appropriate. */
 
 	initializeBox();
 
-	// Set species specific parameters
+	// set species specific parameters
 	setRandomProbability(species_occupancy, num_species, "SpeciesOccupancy", 3);
 	setRandomProbability(juvenile_survival_probability, num_species, "JuvenileSurvival", 2);
 	setRandomProbability(adult_survival_probability, num_species, "AdultSurvival", 2);
@@ -127,108 +125,109 @@ void Simulation::initializeRandomSimulation() {
 	setRandomParameter(dispersal_length, num_species, "DispersalLength");
 	setRandomParameter(intrinsic_fecundity, num_species, "Fecundity");
 
-	// Set competition parameters
+	// set competition parameters
 	getParameter(&competition_lower_bound, "CompetitionLower", 0);
-	if(fabs(competition_lower_bound) > 1.) {
-		if(id==0)
+	if (fabs(competition_lower_bound) > 1.) {
+		if (id == 0)
 			fprintf(stderr, "Error, CompetitionLower must be between -1 and 1\n");
 		exit(0);
 	}
 	getParameter(&competition_upper_bound, "CompetitionUpper", 0);
-	if(fabs(competition_upper_bound) > 1.) {
-		if(id==0)
+	if (fabs(competition_upper_bound) > 1.) {
+		if (id == 0)
 			fprintf(stderr, "Error, CompetitionUpper must be between -1 and 1\n");
 		exit(0);
 	}
-	competition_mean = (competition_lower_bound+competition_upper_bound)/2.;
+	competition_mean = (competition_lower_bound + competition_upper_bound) / 2.;
 
 	getParameter(&competition_type, "CompetitionType", 0);
-	if(competition_type.compare("TNormal")==0) {
+	if (competition_type.compare("TNormal") == 0) {
 		getParameter(&competition_mean, "CompetitionMean", 0);
-		if(competition_mean < competition_lower_bound || competition_mean > competition_upper_bound) {
-			if(id==0)
+		if (competition_mean < competition_lower_bound || competition_mean > competition_upper_bound) {
+			if (id == 0)
 				fprintf(stderr, "Error, CompetitionMean must be between CompetitionLower and CompetitionUpper\n");
 			exit(0);
 		}
 		getParameter(&competition_sdev, "CompetitionSdev", 1);
 	}
-
 	getParameter(&competition_correlation, "CompetitionCorr", 0);
-	if(fabs(competition_correlation) > 1.) {
-		if(id==0)
+	if (fabs(competition_correlation) > 1.) {
+		if (id == 0)
 			fprintf(stderr, "Error, CompetitionCorr must be between -1 and 1\n");
 		exit(0);
 	}
-
 	getParameter(&imbalance, "Imbalance", 0);
-	if( imbalance < 0 || imbalance > 1) {
-		if(id==0)
+	if (imbalance < 0 || imbalance > 1) {
+		if (id == 0)
 			fprintf(stderr, "Error, Imbalance must be between 0 and 1\n");
 		exit(0);
 	}
-
 	getParameter(&fecundity_transitivity_type, "FecundityTransitivity", 0);
-	if( fabs(fecundity_transitivity_type) != 1. && fecundity_transitivity_type != 0.) {
-		if(id==0)
-			fprintf(stderr, "Error, current implementation only allows for FecunidtyTransitivity 0 (random), maximum (1) or minimum (-1)\n");
+	if (fabs(fecundity_transitivity_type) != 1. && fecundity_transitivity_type != 0.) {
+		if (id == 0)
+			fprintf(stderr, "Error, current implementation only allows for FecundityTransitivity 0 (random), maximum (1), or minimum (-1)\n");
 		exit(0);
 	}
 	getParameter(&growth_transitivity_type, "GrowthTransitivity", 0);
-	if( fabs(growth_transitivity_type) != 1. && growth_transitivity_type != 0.) {
-		if(id==0)
-			fprintf(stderr, "Error, current implementation only allows for GrowthTransitivity 0 (random), maximum (1) or minimum (-1)\n");
+	if (fabs(growth_transitivity_type) != 1. && growth_transitivity_type != 0.) {
+		if (id == 0)
+			fprintf(stderr, "Error, current implementation only allows for GrowthTransitivity 0 (random), maximum (1), or minimum (-1)\n");
 		exit(0);
 	}
 	getParameter(&fecundity_growth_relative_hierarchy, "RelativeHierarchy", 0);
-	if( fabs(fecundity_growth_relative_hierarchy) != 1. && fecundity_growth_relative_hierarchy != 0.) {
-		if(id==0)
-			fprintf(stderr, "Error, RelativeHierarchy must be +/-1 (equal/univerted), or 0 (unrelated)\n");
+	if (fabs(fecundity_growth_relative_hierarchy) != 1. && fecundity_growth_relative_hierarchy != 0.) {
+		if (id == 0)
+			fprintf(stderr, "Error, RelativeHierarchy must be +/-1 (equal/uninverted), or 0 (unrelated)\n");
 		exit(0);
 	}
-	if( fecundity_growth_relative_hierarchy != 0 && ( fecundity_transitivity_type == 0 ||  growth_transitivity_type == 0  )  ) {
-		if(id==0)
+	if (fecundity_growth_relative_hierarchy != 0 && (fecundity_transitivity_type == 0 || growth_transitivity_type == 0)) {
+		if (id == 0)
 			fprintf(stderr, "Error, if RelativeHierarchy is not zero, neither FecundityTransitive nor GrowthTransitivity can be zero\n");
 		exit(0);
 	}
-	if( ( competition_correlation!=0 ) + ( imbalance!=0.5 ) + ( ( fabs(fecundity_transitivity_type) + fabs(growth_transitivity_type) ) != 0 ) > 1  ) {
-		if(id==0)
-			fprintf(stderr, "Error, only one of CompetitionCorr, Imbalance, and (Fecundity/Growth)Transitivty can be set\n");
+	if ((competition_correlation!=0) + (imbalance!=0.5) + ((fabs(fecundity_transitivity_type) + fabs(growth_transitivity_type)) != 0) > 1) {
+		if (id == 0)
+			fprintf(stderr, "Error, only one of CompetitionCorr, Imbalance, and (Fecundity/Growth)Transitivity can be set\n");
 		exit(0);
 	}
 
-	// Initialization competition
-	if( competition_type.compare("Uniform") == 0  ) {
-		if(competition_correlation != 0) 
+	// initializate competition
+	// first, draw random variates from uniform or truncated normal distribution to fill competition matrices
+	if (competition_type.compare("Uniform") == 0) {
+		// if growth and fecundity matrices are correlated or anticorrelated (growth/reproduction trade-off)
+		if (competition_correlation != 0) 
 			initializeUniformCorrelatedCompetition();
 		else
 			initializeUniformCompetition();
 
 	}
-	else if( competition_type.compare("TNormal") == 0  ){
-		if(competition_correlation != 0)
+	else if (competition_type.compare("TNormal") == 0){
+		// if growth and fecundity matrices are correlated or anticorrelated (growth/reproduction trade-off)
+		if (competition_correlation != 0)
 			initializeTNormalCorrelatedCompetition();
 		else
 			initializeTNormalCompetition();
 	}
 	else {
-		if(id==0)
-			fprintf(stderr, "Competition type must be either Uniform or TNormal\n", competition_type.c_str());
+		if (id == 0)
+			fprintf(stderr, "CompetitionType must be either Uniform or TNormal\n");
 		exit(0);
 	}
-	if(imbalance!=0.5)
+	// if competition is imbalanced (one species has a stronger effect on the second than the second has on the first
+	if (imbalance != 0.5)
 		imbalanceCompetition();
-
-	if(fecundity_transitivity_type!=0 || growth_transitivity_type!=0)
+	// if competition is transitive (community forms a hierarchy) or intransitive (community has loops breaking hierarchy)
+	if (fecundity_transitivity_type != 0 || growth_transitivity_type!=0)
 		setCompetitionTransitivity();
 
-	// Calculate competition properties
+	// calculate properties of pairwise and community-level interactions
 	getImbalanceMean();
 	getDiscreteTransitivity();
 	getFecundityGrowthCorrelation();
 
-	if(random_count > max_random_count) {
-		if(id==0)
-			fprintf(stderr, "Error, too many random numbers used to generate initial conditions, for TNormal distribution or correlation may be too sever\n");
+	if (random_count > max_random_count) {
+		if (id == 0)
+			fprintf(stderr, "Error, too many random numbers used to generate initial conditions. Probable causes are the parameterization of TNormal distribution or severe competition correlation\n");
 		exit(0);
 	}
 
@@ -236,17 +235,15 @@ void Simulation::initializeRandomSimulation() {
 	random_count = 0;
 
 	return;
-
 }
 
 void Simulation::initializeRedoSimulation() {
-
 	initializeBox();
 	loadCompetition();
 
-	if(random_count > max_random_count) {
-		if(id==0)
-			fprintf(stderr, "Error, too many random numbers used to generate initial conditions, for TNormal distribution or correlation may be too sever\n");
+	if (random_count > max_random_count) {
+		if (id == 0)
+			fprintf(stderr, "Error, too many random numbers used to generate initial conditions. Probable causes are the parameterization of TNormal distribution or severe competition correlation\n");
 		exit(0);
 	}
 
@@ -254,64 +251,64 @@ void Simulation::initializeRedoSimulation() {
 	random_count = 0;
 
 	return;
-
 }
 
 void Simulation::initializeRestartSimulation() {
+	/* method used if a previous simulation failed before completing or if you want to extend the simulation.
+	continues the simulation from where it left off. this method initializes the box, reloads the parameters from
+	the previous simulation, and starts up the RNG for the appropriate time step */
 
 	loadBox();
 	loadDispersal();
 	loadCompetition();
 
-	if(random_count > max_random_count) {
-		if(id==0)
-			fprintf(stderr, "Error, too many random numbers used to generate initial conditions, for TNormal distribution or correlation may be too sever\n");
+	if (random_count > max_random_count) {
+		if (id == 0)
+			fprintf(stderr, "Error, too many random numbers used to generate initial conditions. Probable causes are the parameterization of TNormal distribution or severe competition correlation\n");
 		exit(0);
 	}
 
-	global_random_generator.discard(max_random_count + 4*box_size*box_size*restart_time - random_count);
+	global_random_generator.discard(max_random_count + 4 * box_size * box_size * restart_time - random_count);
 	random_count = 0;
 
 	return;
-
 }
 
 void Simulation::allocSim() {
+	/* allocate memory for all arrays used in simulations, including parameter arrays, box with species locations, and dispersal box with seed locations. */
 
 	int i, j, k;
 
-	// Allocate simulation arrays
 	juvenile_survival_probability = new double[num_species];
 	adult_survival_probability = new double[num_species];
 	maximum_competition = new double[num_species];
 	dispersal_probability = new double[num_species];
-	if( !juvenile_survival_probability || !adult_survival_probability || !maximum_competition) {
-		fprintf(stderr, "Error, unable to allocate memory for species parameters\n");
+	if (!juvenile_survival_probability || !adult_survival_probability || !maximum_competition) {
+		fprintf(stderr, "Error, unable to allocate memory for survival or maximum competition arrays\n");
 		exit(-1);
 	}
 	fecundity_row_sum = new double[num_species];
 	growth_row_sum = new double[num_species];
 	fecundity_transitivity = new double *[num_species];
 	growth_transitivity = new double *[num_species];
-	if(!fecundity_row_sum || !growth_row_sum || !fecundity_transitivity || !growth_transitivity) {
-		fprintf(stderr, "Error, unable to allocate memory for transitivity arrays 1\n");
+	if (!fecundity_row_sum || !growth_row_sum || !fecundity_transitivity || !growth_transitivity) {
+		fprintf(stderr, "Error, unable to allocate memory for transitivity arrays\n");
 		exit(-1);
 	}
 	species_occupancy = new double[num_species];
 	dispersal_length = new double[num_species];
 	intrinsic_fecundity = new double[num_species];
-	if(!species_occupancy  || !dispersal_length|| !intrinsic_fecundity ) {
-		fprintf(stderr, "Error, unable to allocate memory for species parameters\n");
+	if (!species_occupancy  || !dispersal_length|| !intrinsic_fecundity ) {
+		fprintf(stderr, "Error, unable to allocate memory for species occupancy, dispersal, or intrinsic fecundity arrays\n");
 		exit(-1);
 	}
 	competition_fecundity = new double *[num_species];
 	competition_growth = new double *[num_species];
-	if(! competition_fecundity || ! competition_growth) {
-		fprintf(stderr, "Error, unable to allocate memory for competition matrices\n");
+	if (!competition_fecundity || !competition_growth) {
+		fprintf(stderr, "Error, unable to allocate memory for growth or fecundity competition matrices\n");
 		exit(-1);
 	}
-	for( i = 0 ; i < num_species ; i++ ){
-
+	for (i = 0; i < num_species ; i++) {
 		juvenile_survival_probability[i] = 0.;
 		adult_survival_probability[i] = 0.;
 		maximum_competition[i] = 0.;
@@ -326,15 +323,15 @@ void Simulation::allocSim() {
 		competition_growth[i] = new double[num_species];
 		fecundity_transitivity[i] = new double[num_species];
 		growth_transitivity[i] = new double[num_species];
-		if(!fecundity_transitivity[i] || !growth_transitivity[i]  ) {
+		if (!fecundity_transitivity[i] || !growth_transitivity[i]) {
 			fprintf(stderr, "Error, unable to allocate memory for transitivity arrays\n");
 			exit(-1);
 		}
-		if(!competition_fecundity[i] || !competition_growth[i]) {
+		if (!competition_fecundity[i] || !competition_growth[i]) {
 			fprintf(stderr, "Error, unable to allocate memory for competition matrices\n");
 			exit(-1);
 		}
-		for(j=0;j<num_species;j++) {
+		for (j = 0; j < num_species; j++) {
 			fecundity_transitivity[i][j] = 0.;
 			growth_transitivity[i][j] = 0.;
 			competition_fecundity[i][j] = 0.;
@@ -347,39 +344,32 @@ void Simulation::allocSim() {
 	next_box = new int *[box_size];
 	dispersal_box = new double **[box_size];
 	next_dispersal_box = new double **[box_size];
-	if(!box  || !next_box || !dispersal_box || !next_dispersal_box) {
-		fprintf(stderr, "Error, unable to allocate memory for box and dispersal\n");
+	if (!box || !next_box || !dispersal_box || !next_dispersal_box) {
+		fprintf(stderr, "Error, unable to allocate memory for box and dispersal box\n");
 		exit(-1);
 	}
-	for( i = 0 ; i < box_size ; i++ ){
-
+	for (i = 0; i < box_size; i++) {
 		box[i] = new int[box_size];
 		next_box[i] = new int[box_size];
 		dispersal_box[i] = new double *[box_size];
 		next_dispersal_box[i] = new double *[box_size];
-		if(!box[i]  || !next_box[i] || !dispersal_box[i] || !next_dispersal_box[i]) {
-			fprintf(stderr, "Error, unable to allocate memory for box and dispersal\n");
+		if (!box[i] || !next_box[i] || !dispersal_box[i] || !next_dispersal_box[i]) {
+			fprintf(stderr, "Error, unable to allocate memory for box and dispersal box\n");
 			exit(-1);
 		}
-
-		for(j=0;j<box_size;j++) {
-
+		for (j = 0; j < box_size; j++) {
 			box[i][j] = 0;
 			next_box[i][j] = 0;
-
 			dispersal_box[i][j] = new double[num_species];
 			next_dispersal_box[i][j] = new double[num_species];
-			if( !dispersal_box[i][j] || !next_dispersal_box[i][j]) {
-				fprintf(stderr, "Error, unable to allocate memory for dispersal\n");
+			if (!dispersal_box[i][j] || !next_dispersal_box[i][j]) {
+				fprintf(stderr, "Error, unable to allocate memory for dispersal box\n");
 				exit(-1);
 			}
-
-
-			for(k=0;k<num_species;k++) {
+			for (k = 0; k < num_species; k++) {
 				dispersal_box[i][j][k] = 0;
 				next_dispersal_box[i][j][k] = 0;
 			}
-
 		}
 	}
 
@@ -389,78 +379,74 @@ void Simulation::allocSim() {
 
 
 void Simulation::initializeBox() {
+	/* initializes box with randomly located species, depending on the occupancy probability, which defines both the total
+	occupancy of the box and the species specific probabilities. also determines whether individuals are juveniles or adults
+	with equal probability. */
 
-	int i,j;
+	int i, j;
 
-	// Initializes box with random distribution of the species
 	std::bernoulli_distribution stage_dist(0.5);
 	std::bernoulli_distribution occupy_dist(initial_occupancy);
-	std::discrete_distribution<int> species_dist(species_occupancy, species_occupancy+num_species);
+	std::discrete_distribution<int> species_dist(species_occupancy, species_occupancy + num_species);
 
-	for( i = 0 ; i < box_size ; i++ ){
-		for(j=0;j<box_size;j++) {
-
+	for (i = 0; i < box_size; i++) {
+		for (j = 0; j < box_size; j++) {
 			box[i][j] = occupy_dist(generateRandom());
-
-			if( stage_dist(generateRandom()) == 0 && box[i][j] != 0 )
+			if (stage_dist(generateRandom()) == 0 && box[i][j] != 0)
 				box[i][j] *= -1;
-
-			if(box[i][j] != 0) {
-				box[i][j] *= 1+species_dist(generateRandom());
+			if (box[i][j] != 0) {
+				box[i][j] *= 1 + species_dist(generateRandom());
 			}
-
 		}
 	}
-
 	return;
-
 }
 
 
 void Simulation::resetBox() {
-	
+	/* for the current time step, set all elements of the box and the dispersal box to 0. used in simulation for the first time step (t = 0).  */
 	int i, j, k;
 
-	for(i=0;i<box_size;i++) {
-		for(j=0;j<box_size;j++) {
+	for (i = 0; i < box_size; i++) {
+		for (j = 0; j < box_size; j++) {
 			box[i][j] = 0;
-			for(k=0;k<num_species;k++) {
+			for (k = 0; k < num_species; k++) {
 				dispersal_box[i][j][k] = 0.;
 			}
 		}
 	}
-
 	return;
-
 }
 
 
 void Simulation::resetNextBox() {
-	
+	/* for the next time step, set all elements of the box and the dispersal box to 0. used in simulation so that workers
+	can reset their local copies of 'next_box' and 'next_dispersal_box' */
+
 	int i, j, k;
 
-	for(i=0;i<box_size;i++) {
-		for(j=0;j<box_size;j++) {
+	for (i = 0; i < box_size; i++) {
+		for (j = 0; j < box_size; j++) {
 			next_box[i][j] = 0;
-			for(k=0;k<num_species;k++) {
+			for (k = 0; k < num_species; k++) {
 				next_dispersal_box[i][j][k] = 0.;
 			}
 		}
 	}
-
 	return;
-
 }
 
 std::mt19937& Simulation::generateRandom() {
+	/* generate a random seed */
 
-	random_count+=2;
+	random_count += 2;
 	return global_random_generator;
-
 }
 
 
 void Simulation::updateSingleSite(int i, int j) {
+	/* this method runs through all processes, including germination, survival, growth, reproduction, and death,
+	for a single site in the box. workers use this method to update their local copies of 'next_box' and 'next_dispersal_box' */
 
 	int k, l, kp, lp;
 	unsigned long long start_random_count = random_count;
@@ -484,215 +470,195 @@ void Simulation::updateSingleSite(int i, int j) {
 	int *neighborhood_abundance;
 	double **distance_probability;
 
-	this_species = abs(box[i][j]);
-
-	if(this_species==0) {
-
+	this_species = abs(box[i][j]);  // species in this site i, j
+	
+	// if the site is open, determine whether or not something germinates with a Bernoulli probability based on the total number of seeds in the site
+	// if something germinates, select the species that germinates with probability equal to the relative abundance of each species's seeds in this site.
+	if (this_species == 0) {
 		total_seeds = 0;
 	
-		for(k=0;k<num_species;k++)
+		for (k = 0; k < num_species; k++)
 			total_seeds += dispersal_box[i][j][k];
 
-		std::bernoulli_distribution germ_dist(1. - pow(1.- germination_probability, total_seeds ));
+		std::bernoulli_distribution germ_dist(1. - pow(1.- germination_probability, total_seeds));
 
-		if(germ_dist(generateRandom())) {
-			std::discrete_distribution<int> species_dist(dispersal_box[i][j], dispersal_box[i][j]+num_species);
-			next_box[i][j] = -abs( species_dist(generateRandom()) + 1 );
+		if (germ_dist(generateRandom())) {
+			std::discrete_distribution<int> species_dist(dispersal_box[i][j], dispersal_box[i][j] + num_species);
+			next_box[i][j] = -abs(species_dist(generateRandom()) + 1);
 		}
 		else {
 			next_box[i][j] = 0;
 		}
-
 	}
 	else {
-
-		this_stage = box[i][j]/abs(box[i][j]);
-	
-		if(this_stage > 0)
-			this_survival_probability = adult_survival_probability[this_species-1] ;
+		// if the site is not open, determine whether it's occupied by a juvenile or an adult
+		this_stage = box[i][j] / abs(box[i][j]);
+		// the individual survives with stage-specific probability
+		if (this_stage > 0)
+			this_survival_probability = adult_survival_probability[this_species - 1] ;
 		else
-			this_survival_probability = juvenile_survival_probability[this_species-1];
-
-		this_intrinsic_fecundity = intrinsic_fecundity[this_species-1];
-		this_dispersal_probability = dispersal_probability[this_species-1];
-		this_dispersal_length = dispersal_length[this_species-1];
-		this_maximum_competition = maximum_competition[this_species-1];
+			this_survival_probability = juvenile_survival_probability[this_species - 1];
+		// determine intrinsic fecundity, dispersal probability, dispersal length, and maximum competition based on the species identity
+		this_intrinsic_fecundity = intrinsic_fecundity[this_species - 1];
+		this_dispersal_probability = dispersal_probability[this_species - 1];
+		this_dispersal_length = dispersal_length[this_species - 1];
+		this_maximum_competition = maximum_competition[this_species - 1];
 
 		std::bernoulli_distribution survival_dist(this_survival_probability);
-
+		// if species survives, it persists to next time step
 		if(survival_dist(generateRandom())) {
-
 			next_box[i][j] = box[i][j];
 
-			neighborhood = new int[ (2*delta+1)*(2*delta+1) ]; 
-			if(!neighborhood){
+			// determine abundance of each species in the neighborhood of the focal individual
+			// neighborhood limits depend on the parameter delta
+			neighborhood = new int[(2 * delta + 1) * (2 * delta + 1)]; 
+			if (!neighborhood) {
 					fprintf(stderr, "Error, neighborhood memory allocation failed for site %d %d\n", i, j);	
 					exit(-1);
 			}
-			for(k=0;k<(2*delta+1)*(2*delta+1);k++)
-				neighborhood[k]=0;
-
+			for (k = 0; k < (2 * delta + 1) * (2 * delta + 1); k++)
+				neighborhood[k] = 0;
 			neighborhood_abundance = new int[num_species];
-			if(!neighborhood_abundance){
+			if (!neighborhood_abundance) {
 					fprintf(stderr, "Error, neighborhood abundance memory allocation failed for site %d %d\n", i, j);	
 					exit(-1);
 			}
-			for(k=0;k<num_species;k++)
-				neighborhood_abundance[k]=0;	
-
-			for(k=0; k<2*delta+1; k++) {
-				for(l=0;l<2*delta+1;l++) {
-					if(k!=delta || l!=delta ){
-
+			for (k = 0; k < num_species; k++)
+				neighborhood_abundance[k] = 0;	
+			for (k = 0; k < 2 * delta + 1; k++) {
+				for (l = 0; l < 2 * delta + 1; l++) {
+					if (k != delta || l != delta) {
 						kp = k;
 						lp = l;
-
-						if( i - delta + kp < 0)
+						if (i - delta + kp < 0)
 							kp += box_size - i;
-						else if( i - delta + kp > box_size-1)
+						else if (i - delta + kp > box_size - 1)
 							kp += -box_size;	
-						if( j - delta + lp < 0)
+						if (j - delta + lp < 0)
 							lp += box_size - j;
-						else if( j - delta + lp > box_size-1)
+						else if (j - delta + lp > box_size - 1)
 							lp += -box_size;
-
-						neighborhood[l+(2*delta+1)*k] = box[i-delta+kp][j-delta+lp];
-						if( neighborhood[l+(2*delta+1)*k] != 0  ) {
-							neighborhood_abundance[ abs( neighborhood[l+(2*delta+1)*k] )  - 1  ]++;
+						neighborhood[l + (2 * delta + 1) * k] = box[i - delta + kp][j - delta + lp];
+						if (neighborhood[l + (2 * delta + 1) * k] != 0) {
+							neighborhood_abundance[abs(neighborhood[l + (2 * delta + 1) * k]) - 1]++;
 							total_abundance++;
 						}	
-
 					}
 				}
 			}
-		
 			delete[] neighborhood;
 
-			if( this_stage < 0  ) {
-
-				for(k=0; k<num_species; k++)
-					growth_probability += competition_growth[this_species-1][k]*( (double) neighborhood_abundance[k] )/( (double) total_abundance );
-				growth_probability = this_maximum_competition*exp(growth_probability);
-				if(growth_probability > this_maximum_competition)
+			// if focal individual is a juvenile, it will grow to become an adult with a probability dependent on competition with individuals in its neighborhood
+			// depends on the growth competition matrix, which dictates these interactions. the maximum probability is set as a parameter (never a 100% chance of growing)
+			if (this_stage < 0) {
+				for (k = 0; k < num_species; k++)
+					growth_probability += competition_growth[this_species - 1][k] * ((double) neighborhood_abundance[k]) / ((double) total_abundance);
+				growth_probability = this_maximum_competition * exp(growth_probability);
+				if (growth_probability > this_maximum_competition)
 					growth_probability = this_maximum_competition;
 
 				std::bernoulli_distribution stage_dist(growth_probability);
 
-				if(stage_dist(generateRandom()))
+				if (stage_dist(generateRandom()))
 					next_box[i][j] = abs(next_box[i][j]);
-
 			}
 			else {
-
-				if(total_abundance != 0) {
-					for(k=0; k<num_species; k++)
-						this_fecundity += competition_fecundity[this_species-1][k]*( (double) neighborhood_abundance[k])/( (double) total_abundance );
-					this_fecundity = this_intrinsic_fecundity*exp(this_fecundity);
+				// if focal individual is an adult, it will reproduce with a fecundity based on competition with individuals in its neighborhood
+				if (total_abundance != 0) {
+					for (k = 0; k < num_species; k++)
+						this_fecundity += competition_fecundity[this_species - 1][k] * ((double) neighborhood_abundance[k]) / ((double) total_abundance);
+					this_fecundity = this_intrinsic_fecundity * exp(this_fecundity);
 				}
 				else {
 					this_fecundity = this_intrinsic_fecundity;
 				}
 
-
+				// the fecundity (equal to the number of seeds produced by the focal individuals) is spread over the entire matrix
+				// the number of seeds at each site is an exponential function of distance, quickly decaying depending on the dispersal length parameter
 				distance_probability = new double*[box_size];
-				if(!distance_probability) {
+				if (!distance_probability) {
 					fprintf(stderr, "Error, distance probability memory allocation failed for site %d %d\n", i, j);	
 					exit(-1);
 				}
-				for(k=0; k<box_size;k++) {
+				for (k = 0; k < box_size; k++) {
 					distance_probability[k] = new double[box_size];
-					if(!distance_probability[k]) {
+					if (!distance_probability[k]) {
 						fprintf(stderr, "Error, distance probability memory allocation failed for site %d %d\n", i, j);	
 						exit(-1);
 					}
-					for(l=0;l<box_size;l++) {
-						distance_probability[k][l] = pow(std::min(abs(i-k), box_size -  abs(i-k)),2);
-						distance_probability[k][l] += pow(std::min(abs(j-l), box_size -  abs(j-l)),2);
+					for (l = 0; l < box_size; l++) {
+						distance_probability[k][l] = pow(std::min(abs(i - k), box_size - abs(i - k)), 2);
+						distance_probability[k][l] += pow(std::min(abs(j - l), box_size -  abs(j - l)), 2);
 						distance_probability[k][l] = sqrt(distance_probability[k][l]);
-						distance_probability[k][l] = exp(log(this_dispersal_probability)/dispersal_length[this_species-1]*distance_probability[k][l]);
+						distance_probability[k][l] = exp(log(this_dispersal_probability) / dispersal_length[this_species - 1] * distance_probability[k][l]);
 						distance_probability_sum += distance_probability[k][l];
 					}
 				}
-
-				
-
-				for(k=0; k<box_size;k++) {
-					for(l=0;l<box_size;l++) {
-						next_dispersal_box[k][l][this_species-1] += this_fecundity*distance_probability[k][l]/distance_probability_sum;
+				for (k = 0; k < box_size; k++) {
+					for (l = 0; l < box_size; l++) {
+						next_dispersal_box[k][l][this_species - 1] += this_fecundity * distance_probability[k][l] / distance_probability_sum;
 					}
-
 					delete[] distance_probability[k];
-
 				}
-
 				delete[] distance_probability;
-
 			}
-			
 			delete[] neighborhood_abundance;
-
 		}
 		else {
-
+			// focal individual dies
 			next_box[i][j] = 0;
 		}
-
 	}
-
-	discardRandom( ( (unsigned long long)  4 - ( random_count - start_random_count)  ) );
+	// no matter what happened in this site, four random numbers will be discarded (the maximum number of random numbers used in the simulation)
+	discardRandom(((unsigned long long) 4 - (random_count - start_random_count)));
 
 	return;
-
 }
 
 
 void Simulation::nextToThis() {
-	
+	/* this method updates the species in the box at this time step to the next time step,
+	and sets the next time step to be unoccupied. does the same for seeds in the dispersal
+	box */
+
 	int i, j, k;
 
-	for(i=0;i<box_size;i++) {
-		for(j=0;j<box_size;j++) {
-
+	for (i = 0; i < box_size; i++) {
+		for (j = 0; j < box_size; j++) {
 			box[i][j] = next_box[i][j];
 			next_box[i][j] = 0;
-	
-			for(k=0;k<num_species;k++) {
+			for (k = 0; k < num_species; k++) {
 				dispersal_box[i][j][k] = next_dispersal_box[i][j][k];
 				next_dispersal_box[i][j][k] = 0;
 			}
 		}
 	}
-
 	return;
-
 }
 
 
 void Simulation::saveBox(int time_step) {
+	/* saves the species locations in the box from the current time step to file */
 
 	int i, j;	
 
 	std::ofstream box_file;
-	box_file.open(outfile_base+"_"+std::to_string(time_step)+".csv", std::ios::out | std::ios::trunc);
+	box_file.open(outfile_base+"_" + std::to_string(time_step) + ".csv", std::ios::out | std::ios::trunc);
 
-	if(!box_file.is_open()) {
-			if(id==0)
-				fprintf(stderr, "Error, could not open time step %d box file file for for loading\n", time_step);
+	if (!box_file.is_open()) {
+			if (id == 0)
+				fprintf(stderr, "Error, could not open time step %d box file file to load\n", time_step);
 			exit(0);
 	}
 
-
-	for(i=0;i<box_size;i++) {
-		for(j=0;j<box_size;j++) {
-
-			if(box[i][j] < 0)
+	for (i = 0; i < box_size; i++) {
+		for (j = 0; j < box_size; j++) {
+			if (box[i][j] < 0)
 				box_file << box[i][j];
 			else
 				box_file << " " << box[i][j];
-
-			if(j!=box_size-1)
+			if (j != box_size - 1)
 				box_file << ", ";
-
 			}
 			box_file << std::endl;
 		}
@@ -700,138 +666,128 @@ void Simulation::saveBox(int time_step) {
 	box_file.close();
 
 	return;
-
 }
 
 
 void Simulation::saveCompetition() {
+	/* before the first time step, saves the parameters from this simulation to file, including species
+	occupancy, survival, maximum competition, dispersal probability, dispersal length, intrinsic fecundity
+	fecundity and growth competition matrices. also saves metrics calculated from the competition matrices,
+	i.e., transitivity. */
 
 	int i, j;
 
 	std::ofstream competition_file;
-	competition_file.open(outfile_base+"_competition.csv", std::ios::out | std::ios::trunc);
+	competition_file.open(outfile_base + "_competition.csv", std::ios::out | std::ios::trunc);
 
-	if(!competition_file.is_open()) {
-			if(id==0)
-				fprintf(stderr, "Error, could not open competition file for for saving\n");
+	if (!competition_file.is_open()) {
+			if (id == 0)
+				fprintf(stderr, "Error, could not open competition file to save\n");
 			exit(0);
 	}
 
-
 	competition_file << "# Species Occupancy:" << std::endl;
-	for(i=0;i<num_species;i++) {
+	for (i = 0; i < num_species; i++) {
 		competition_file << " " << species_occupancy[i];
 	}
 	competition_file << std::endl;
 
 	competition_file << "# Juvenile Survival:" << std::endl;
-	for(i=0;i<num_species;i++) {
+	for (i = 0; i < num_species; i++) {
 		competition_file << " " << juvenile_survival_probability[i];
 	}
 	competition_file << std::endl;
 
 	competition_file << "# Adult Survival:" << std::endl;
-	for(i=0;i<num_species;i++) {
+	for (i = 0; i < num_species; i++) {
 		competition_file << " " << adult_survival_probability[i];
 	}
 	competition_file << std::endl;
 
 	competition_file << "# Maximum Competition:" << std::endl;
-	for(i=0;i<num_species;i++) {
+	for (i = 0; i < num_species; i++) {
 		competition_file << " " << maximum_competition[i];
 	}
 	competition_file << std::endl;
 
 	competition_file << "# Dispersal probability:" << std::endl;
-	for(i=0;i<num_species;i++) {
+	for (i = 0; i < num_species; i++) {
 		competition_file << " " << dispersal_probability[i];
 	}
 	competition_file << std::endl;
 
 	competition_file << "# Dispersal length:" << std::endl;
-	for(i=0;i<num_species;i++) {
+	for (i = 0; i < num_species; i++) {
 		competition_file << " " << dispersal_length[i];
 	}
 	competition_file << std::endl;
 
 	competition_file << "# Intrinsic fecundity:" << std::endl;
-	for(i=0;i<num_species;i++) {
+	for (i = 0; i < num_species; i++) {
 		competition_file << " " << intrinsic_fecundity[i];
 	}
 	competition_file << std::endl;
 	
 	competition_file << "# Fecundity competition:" << std::endl;
-	for(i=0;i<num_species;i++) {
-		for(j=0;j<num_species;j++) {
-
-			if(competition_fecundity[i][j] < 0)
+	for (i = 0; i < num_species; i++) {
+		for (j = 0; j < num_species; j++) {
+			if (competition_fecundity[i][j] < 0)
 				competition_file << competition_fecundity[i][j];
 			else
 				competition_file << " " << competition_fecundity[i][j];
-
-			if(j!=num_species-1)
+			if (j != num_species - 1)
 				competition_file << ", ";
-
 			}
 			competition_file << std::endl;
 		}
 
 	competition_file << "# Growth competition:" << std::endl;
-	for(i=0;i<num_species;i++) {
-		for(j=0;j<num_species;j++) {
-
+	for (i = 0; i < num_species; i++) {
+		for (j = 0; j < num_species; j++) {
 			if(competition_growth[i][j] < 0)
 				competition_file << competition_growth[i][j];
 			else
 				competition_file << " " << competition_growth[i][j];
-
-			if(j!=num_species-1)
+			if (j != num_species - 1)
 				competition_file << ", ";
-
 			}
 			competition_file << std::endl;
 		}
 
 	competition_file << "# fecundity transitivity row sum:" << std::endl;
-	for(i=0;i<num_species;i++) {
+	for (i = 0; i < num_species; i++) {
 		competition_file << " " << fecundity_row_sum[i];
 	}
 	competition_file << std::endl;
 
 	competition_file << "# growth row sum:" << std::endl;
-	for(i=0;i<num_species;i++) {
+	for (i = 0; i < num_species; i++) {
 		competition_file << " " << growth_row_sum[i];
 	}
 	competition_file << std::endl;
 
 	competition_file << "# Fecundity transitivity:" << std::endl;
-	for(i=0;i<num_species;i++) {
-		for(j=0;j<num_species;j++) {
-
-			if(fecundity_transitivity[i][j] < 0)
+	for (i = 0; i < num_species; i++) {
+		for (j = 0; j < num_species; j++) {
+			if (fecundity_transitivity[i][j] < 0)
 				competition_file << fecundity_transitivity[i][j];
 			else
 				competition_file << " " << fecundity_transitivity[i][j];
-
-			if(j!=num_species-1)
+			if (j != num_species - 1)
 				competition_file << ", ";
-
 			}
 			competition_file << std::endl;
 		}
 
 	competition_file << "# Growth transitivity:" << std::endl;
-	for(i=0;i<num_species;i++) {
-		for(j=0;j<num_species;j++) {
-
-			if(growth_transitivity[i][j] < 0)
+	for (i = 0; i < num_species; i++) {
+		for (j = 0; j < num_species; j++) {
+			if (growth_transitivity[i][j] < 0)
 				competition_file << growth_transitivity[i][j];
 			else
 				competition_file << " " << growth_transitivity[i][j];
-
-			if(j!=num_species-1)
+			if (j != num_species - 1)
 				competition_file << ", ";
-
 			}
 			competition_file << std::endl;
 		}
@@ -846,11 +802,11 @@ void Simulation::saveCompetition() {
 void Simulation::saveProperties() {
 
 	std::ofstream properties_file;
-	properties_file.open(outfile_base+"_properties.csv", std::ios::out | std::ios::trunc);
+	properties_file.open(outfile_base + "_properties.csv", std::ios::out | std::ios::trunc);
 
-	if(!properties_file.is_open()) {
-			if(id==0)
-				fprintf(stderr, "Error, could not open properties file for for saving\n");
+	if (!properties_file.is_open()) {
+			if (id == 0)
+				fprintf(stderr, "Error, could not open properties file to save\n");
 			exit(0);
 	}
 

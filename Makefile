@@ -1,24 +1,24 @@
 # Options are PARALLEL (with MPI) or SERIES (without MPI)
-TYPE = PARALLEL
+TYPE=SERIES
 # Installation directory
-INSTALLDIR = bin 
+INSTALLDIR=/usr/local/bin
  
 ifeq ($(TYPE), PARALLEL)
 	# MPI c++ compiler
-	CXX = mpic++ 
-	SOURCE = $(wildcard src/parallel/*.cpp)
+	CXX=mpic++ 
+	SOURCE=$(wildcard src/parallel/*.cpp)
 else ifeq ($(TYPE), SERIES)
 	# c++ compiler
-	CXX = g++ 
-	SOURCE = $(wildcard src/series/*.cpp)
+	CXX=g++ 
+	SOURCE=$(wildcard src/series/*.cpp)
 endif
 
-CXXFLAGS = -std=c++11
-EXEC = ecolattice
+CXXFLAGS=-std=c++11
+EXEC=ecolattice
 
-all: ecolat
+all: ecolattice
 
-ecolat: $(SOURCE)
+ecolattice: $(SOURCE)
 	$(CXX) $(CXXFLAGS) -o $(EXEC) $(SOURCE)
 
 install: $(EXEC)
