@@ -71,6 +71,9 @@ class Simulation {
 		void initializeRandomSimulation();
 		void initializeRedoSimulation();
 		void initializeRestartSimulation();
+		void loadBox();
+		void loadDispersal();
+		void loadCompetition();
 
 		// Allocation and random seed
 		std::mt19937& generateRandom();
@@ -109,10 +112,6 @@ class Simulation {
 		void getDiscreteFecundityTransitivity();
 		void getDiscreteGrowthTransitivity();
 		void getContinuousTransitivity();
-
-		void loadBox();
-		void loadDispersal();
-		void loadCompetition();
 
 };
 
