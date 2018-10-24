@@ -283,12 +283,9 @@ void Simulation::loadCompetition() {
 						int type = 2;
 						if (line_num == 2)
 							type = 3;
-						setRandomProbability(parameters[line_num / 2 - 1], num_species, name, type);
-						break;
-					}
-					else if (value.compare("reset") && line_num/2 - 1 > 4  ) {
-						std::string name(names[ line_num / 2 - 1]);
-						setRandomParameter(parameters[line_num / 2 - 1], num_species, name);
+						if (line_num/2 - 1 > 4)
+							type = 4;
+						setRandomParameter(parameters[line_num / 2 - 1], num_species, name, type);
 						break;
 					}
 				}

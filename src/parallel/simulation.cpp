@@ -20,7 +20,6 @@ Simulation::Simulation(std::string filename, int p_id) {
 
 	// default parameters
 	restart_time = 0;
-	delta = 1;
 	competition_type = "Uniform";
 	competition_upper_bound = 0;
 	competition_lower_bound = -1;
@@ -59,13 +58,7 @@ Simulation::Simulation(std::string filename, int p_id) {
 		exit(0);
 	}
 	getParameter(&num_species, "Species", 1);
-	getParameter(&delta, "Delta", 0);
-	if (delta < 0 || delta > box_size - 1) {
-		if (id == 0)
-			fprintf(stderr, "Error, Delta must be greater than zero and less than BoxSize\n");
-		MPI_Finalize();
-		exit(0);
-	}
+
 	getParameter(&max_time_step, "MaxTimeStep", 1);
 	getParameter(&initial_occupancy, "InitialOccupancy", 1);
 	if (initial_occupancy > 1 || initial_occupancy < 0) {
@@ -123,13 +116,14 @@ void Simulation::initializeRandomSimulation() {
 	initializeBox();
 
 	// set species specific parameters
-	setRandomProbability(species_occupancy, num_species, "SpeciesOccupancy", 3);
-	setRandomProbability(juvenile_survival_probability, num_species, "JuvenileSurvival", 2);
-	setRandomProbability(adult_survival_probability, num_species, "AdultSurvival", 2);
-	setRandomProbability(maximum_competition, num_species, "MaximumCompetition", 2);
-	setRandomProbability(dispersal_probability,  num_species,"DispersalProbability", 2);
-	setRandomParameter(dispersal_length, num_species, "DispersalLength");
-	setRandomParameter(intrinsic_fecundity, num_species, "Fecundity");
+	getParameter(delta, num_species, "Delta", 2);
+	setRandomParameter(species_occupancy, num_species, "SpeciesOccupancy", 3);
+	setRandomParameter(juvenile_survival_probability, num_species, "JuvenileSurvival", 2);
+	setRandomParameter(adult_survival_probability, num_species, "AdultSurvival", 2);
+	setRandomParameter(maximum_competition, num_species, "MaximumCompetition", 2);
+	setRandomParameter(dispersal_probability,  num_species,"DispersalProbability", 2);
+	setRandomParameter(dispersal_length, num_species, "DispersalLength", 4);
+	setRandomParameter(intrinsic_fecundity, num_species, "Fecundity", 4);
 
 	// set competition parameters
 	getParameter(&competition_lower_bound, "CompetitionLower", 0);
@@ -256,7 +250,9 @@ void Simulation::initializeRandomSimulation() {
 }
 
 void Simulation::initializeRedoSimulation() {
+
 	initializeBox();
+	getParameter(delta, num_species, "Delta", 2);
 	loadCompetition();
 
 	if (random_count > max_random_count) {
@@ -279,6 +275,7 @@ void Simulation::initializeRestartSimulation() {
 
 	loadBox();
 	loadDispersal();
+	getParameter(delta, num_species, "Delta", 2);
 	loadCompetition();
 
 	if (random_count > max_random_count) {
@@ -298,12 +295,12 @@ void Simulation::allocSim() {
 	/* allocate memory for all arrays used in simulations, including parameter arrays, box with species locations, and dispersal box with seed locations. */
 
 	int i, j, k;
-
+	delta = new int[num_species];
 	juvenile_survival_probability = new double[num_species];
 	adult_survival_probability = new double[num_species];
 	maximum_competition = new double[num_species];
 	dispersal_probability = new double[num_species];
-	if (!juvenile_survival_probability || !adult_survival_probability || !maximum_competition) {
+	if (!delta || !juvenile_survival_probability || !adult_survival_probability || !maximum_competition) {
 		fprintf(stderr, "Error, unable to allocate memory for survival or maximum competition arrays\n");
 		MPI_Finalize();
 		exit(-1);
@@ -333,6 +330,7 @@ void Simulation::allocSim() {
 		exit(-1);
 	}
 	for (i = 0; i < num_species ; i++) {
+		delta[i] = 0;
 		juvenile_survival_probability[i] = 0.;
 		adult_survival_probability[i] = 0.;
 		maximum_competition[i] = 0.;
@@ -480,6 +478,7 @@ void Simulation::updateSingleSite(int i, int j) {
 	int k, l, kp, lp;
 	unsigned long long start_random_count = random_count;
 
+	int this_delta = 0;
 	int this_species = 0;
 	int this_stage = 0;
 	double this_survival_probability = 0;
@@ -539,14 +538,15 @@ void Simulation::updateSingleSite(int i, int j) {
 			next_box[i][j] = box[i][j];
 
 			// determine abundance of each species in the neighborhood of the focal individual
-			// neighborhood limits depend on the parameter delta
-			neighborhood = new int[(2 * delta + 1) * (2 * delta + 1)]; 
+			// neighborhood limits depend on the parameter delta for this_species
+			this_delta = delta[this_species - 1];
+			neighborhood = new int[(2 * this_delta + 1) * (2 * this_delta + 1)]; 
 			if (!neighborhood) {
 					fprintf(stderr, "Error, neighborhood memory allocation failed for site %d %d\n", i, j);	
 					MPI_Finalize();
 					exit(-1);
 			}
-			for (k = 0; k < (2 * delta + 1) * (2 * delta + 1); k++)
+			for (k = 0; k < (2 * this_delta + 1) * (2 * this_delta + 1); k++)
 				neighborhood[k] = 0;
 			neighborhood_abundance = new int[num_species];
 			if (!neighborhood_abundance) {
@@ -556,22 +556,22 @@ void Simulation::updateSingleSite(int i, int j) {
 			}
 			for (k = 0; k < num_species; k++)
 				neighborhood_abundance[k] = 0;	
-			for (k = 0; k < 2 * delta + 1; k++) {
-				for (l = 0; l < 2 * delta + 1; l++) {
-					if (k != delta || l != delta) {
+			for (k = 0; k < 2 * this_delta + 1; k++) {
+				for (l = 0; l < 2 * this_delta + 1; l++) {
+					if (k != this_delta || l != this_delta) {
 						kp = k;
 						lp = l;
-						if (i - delta + kp < 0)
+						if (i - this_delta + kp < 0)
 							kp += box_size - i;
-						else if (i - delta + kp > box_size - 1)
+						else if (i - this_delta + kp > box_size - 1)
 							kp += -box_size;	
-						if (j - delta + lp < 0)
+						if (j - this_delta + lp < 0)
 							lp += box_size - j;
-						else if (j - delta + lp > box_size - 1)
+						else if (j - this_delta + lp > box_size - 1)
 							lp += -box_size;
-						neighborhood[l + (2 * delta + 1) * k] = box[i - delta + kp][j - delta + lp];
-						if (neighborhood[l + (2 * delta + 1) * k] != 0) {
-							neighborhood_abundance[abs(neighborhood[l + (2 * delta + 1) * k]) - 1]++;
+						neighborhood[l + (2 * this_delta + 1) * k] = box[i - this_delta + kp][j - this_delta + lp];
+						if (neighborhood[l + (2 * this_delta + 1) * k] != 0) {
+							neighborhood_abundance[abs(neighborhood[l + (2 * this_delta + 1) * k]) - 1]++;
 							total_abundance++;
 						}	
 					}
