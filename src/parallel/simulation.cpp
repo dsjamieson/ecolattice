@@ -113,8 +113,6 @@ void Simulation::initializeRandomSimulation() {
 	/* initializes the simulation box with species locations, and draws random variates for species-specific parameters
 	(dispersal, competition, etc.). also checks that parameter values are appropriate. */
 
-	initializeBox();
-
 	// set species specific parameters
 	getParameter(delta, num_species, "Delta", 2);
 	setRandomParameter(species_occupancy, num_species, "SpeciesOccupancy", 3);
@@ -124,6 +122,8 @@ void Simulation::initializeRandomSimulation() {
 	setRandomParameter(dispersal_probability,  num_species,"DispersalProbability", 2);
 	setRandomParameter(dispersal_length, num_species, "DispersalLength", 4);
 	setRandomParameter(intrinsic_fecundity, num_species, "Fecundity", 4);
+
+	initializeBox();
 
 	// set competition parameters
 	getParameter(&competition_lower_bound, "CompetitionLower", 0);
@@ -251,9 +251,10 @@ void Simulation::initializeRandomSimulation() {
 
 void Simulation::initializeRedoSimulation() {
 
-	initializeBox();
+
 	getParameter(delta, num_species, "Delta", 2);
 	loadCompetition();
+	initializeBox();
 
 	if (random_count > max_random_count) {
 		if (id == 0)
@@ -273,10 +274,10 @@ void Simulation::initializeRestartSimulation() {
 	continues the simulation from where it left off. this method initializes the box, reloads the parameters from
 	the previous simulation, and starts up the RNG for the appropriate time step */
 
-	loadBox();
 	loadDispersal();
 	getParameter(delta, num_species, "Delta", 2);
 	loadCompetition();
+	loadBox();
 
 	if (random_count > max_random_count) {
 		if (id == 0)

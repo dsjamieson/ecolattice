@@ -35,4 +35,4 @@ CompetitionCorr = 0.1 			# Correlation between fecundity and growth competition,
 Imbalance = 0.5					# Mean relative difference in strength of competition between pairs, default 0.5 
 FecundityTransitivity = 0.0		# Transitivity type 1 (transitive), -1 (maximal intransitivity), or default 0 (random) 
 GrowthTransitivity = 0.0		# Transitivity type 1 (transitive), -1 (maximal intransitivity), or default 0 (random)
-RelativeHierarchy = 1.0			# 1 for equal, -1 for inverted, 0 for independent Fecundity/Growth Transitivity
+RelativeHierarchy = 0.0			# 1 for equal, -1 for inverted, 0 for independent Fecundity/Growth Transitivity
