@@ -13,7 +13,7 @@ class Simulation {
 
 	public:
 		Simulation(std::string filename, int p_id);
-		int getBoxSize();
+		int getLatticeSize();
 		int getSpecies();
 		int getMaxTimeStep();
 		int getSite(int i, int j);
@@ -27,13 +27,13 @@ class Simulation {
 		void addSite(int i, int j, int s);
 		void setDispersal(int i, int j, int s, double t);
 		void addDispersal(int i, int j, int s, double t);
-		void resetBox();
-		void resetNextBox();
+		void resetLattice();
+		void resetNextLattice();
 
 		void updateSingleSite(int i, int j);
 		void discardRandom(unsigned long long n);
 		unsigned long long getRandomCount();
-		void saveBox(int time_step);
+		void saveLattice(int time_step);
 		void saveCompetition();
 		void saveProperties();
 		void saveDispersal(int time_step);
@@ -43,15 +43,15 @@ class Simulation {
 
 	private:
 
-		// Box, dispersal, and time step parameters
+		// Lattice, dispersal, and time step parameters
 		int *seeds;
 		std::mt19937 global_random_generator;
 		std::string parameter_filename, outfile_base, outfile_dir;
-		int id, num_species, box_size, num_steps, max_time_step, restart_time;
+		int id, num_species, lattice_size, num_steps, max_time_step, restart_time;
 		unsigned long long random_count, max_random_count;
 		double germination_probability, initial_occupancy;
-		int **box, **next_box;
-		double ***dispersal_box, ***next_dispersal_box;
+		int **lattice, **next_lattice;
+		double ***dispersal_lattice, ***next_dispersal_lattice;
 
 		// Species specific parameters
 		int *delta;
@@ -71,7 +71,7 @@ class Simulation {
 		void initializeRandomSimulation();
 		void initializeRedoSimulation();
 		void initializeRestartSimulation();
-		void loadBox();
+		void loadLattice();
 		void loadDispersal();
 		void loadCompetition();
 
@@ -79,7 +79,7 @@ class Simulation {
 		std::mt19937& generateRandom();
 		int getRandom();
 		void allocSim();
-		void initializeBox();
+		void initializeLattice();
 
 		// Read input and set random parameters
 		void checkInputFormat();

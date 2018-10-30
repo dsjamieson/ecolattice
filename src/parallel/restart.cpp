@@ -4,8 +4,8 @@
 	 *			D.S Jamieson and N.L Kinlock, 2018			
 	 *
 	 *	 this file include methods for class Simulation.
-	 *	 these methods save the box (species locations)
-	 *	 and dispersal box (seed locations) for the current
+	 *	 these methods save the lattice (species locations)
+	 *	 and dispersal lattice (seed locations) for the current
 	 *	 time step. this is so that a failed simulation
 	 *	 does not have to start from the beginning.
 	 *
@@ -14,7 +14,7 @@
 #include "simulation.h"
 
 void Simulation::saveDispersal(int time_step) {
-	/* the dispersal box (locations of seeds of each species) is saved for the current time step */
+	/* the dispersal lattice (locations of seeds of each species) is saved for the current time step */
 
 	int i, j, k;
 	std::ofstream dispersal_file;
@@ -32,9 +32,9 @@ void Simulation::saveDispersal(int time_step) {
 
 		dispersal_file << "# Dispersal for species " << k + 1 << ", time step " << time_step <<  std::endl;
 
-		for (i = 0; i < box_size; i++) {
-			for (j = 0; j < box_size; j++) {
-				dispersal_file << dispersal_box[i][j][k - 1] << ", ";
+		for (i = 0; i < lattice_size; i++) {
+			for (j = 0; j < lattice_size; j++) {
+				dispersal_file << dispersal_lattice[i][j][k - 1] << ", ";
 			}
 			dispersal_file << std::endl;
 		}
@@ -46,29 +46,29 @@ void Simulation::saveDispersal(int time_step) {
 }
 
 
-void Simulation::loadBox() {
-	/* load the box, or the species locations, from the previous simulation. */
+void Simulation::loadLattice() {
+	/* load the lattice, or the species locations, from the previous simulation. */
 
 	int i, j, k, col_num;
 	int line_num = 0;
-	std::ifstream box_file;
+	std::ifstream lattice_file;
 	std::string line;
 	std::string value;
 
-	box_file.open(outfile_base + "_" + std::to_string(restart_time) + ".csv", std::ios::out | std::ios::trunc);
+	lattice_file.open(outfile_base + "_" + std::to_string(restart_time) + ".csv", std::ios::out | std::ios::trunc);
 
-	if (!box_file.is_open()) {
+	if (!lattice_file.is_open()) {
 		if (id == 0)
-			fprintf(stderr, "Error, could not open box file for time step %d to load\n", restart_time);
+			fprintf(stderr, "Error, could not open lattice file for time step %d to load\n", restart_time);
 		MPI_Finalize();
 		exit(0);
 	}
 
-	while (getline(box_file, line)) {
+	while (getline(lattice_file, line)) {
 		line_num++;
-		if (line_num > box_size) {
+		if (line_num > lattice_size) {
 			if (id == 0)
-				fprintf(stderr, "Error, too many lines in box file for time step %d\n", restart_time);
+				fprintf(stderr, "Error, too many lines in lattice file for time step %d\n", restart_time);
 			MPI_Finalize();
 			exit(0);
 		}
@@ -79,9 +79,9 @@ void Simulation::loadBox() {
 
 		while (values >> value) {
 			col_num++;
-			if (col_num > box_size) {
+			if (col_num > lattice_size) {
 				if (id == 0)
-					fprintf(stderr, "Error, too many columns in box file for time step %d, line %d\n", restart_time, line_num);
+					fprintf(stderr, "Error, too many columns in lattice file for time step %d, line %d\n", restart_time, line_num);
 				MPI_Finalize();
 				exit(0);
 			}
@@ -90,37 +90,37 @@ void Simulation::loadBox() {
 
 			if (value.find_first_not_of("0123456789") == std::string::npos) {
 					try {
-						box[line_num - 1][col_num - 1] = stoi(value);
+						lattice[line_num - 1][col_num - 1] = stoi(value);
 					}
 					catch (...) {
 						if (id == 0)
-							fprintf(stderr, "Error, could not convert box file value given for time step %d, in line %d column %d, to positive integers\n", restart_time, line_num, col_num);
+							fprintf(stderr, "Error, could not convert lattice file value given for time step %d, in line %d column %d, to positive integers\n", restart_time, line_num, col_num);
 						MPI_Finalize();
 						exit(0);
 					}
 			}
 			else {
 				if (id == 0)
-					fprintf(stderr, "Error, invalid box file value given for time step %d, in line %d column %d, to positive integers\n", restart_time, line_num, col_num );
+					fprintf(stderr, "Error, invalid lattice file value given for time step %d, in line %d column %d, to positive integers\n", restart_time, line_num, col_num );
 				MPI_Finalize();
 				exit(0);
 			}
 		}
-		if (col_num < box_size) {
+		if (col_num < lattice_size) {
 			if (id == 0)
-				fprintf(stderr, "Error, not enough columns in box file for time step %d, line %d\n", restart_time, line_num );
+				fprintf(stderr, "Error, not enough columns in lattice file for time step %d, line %d\n", restart_time, line_num );
 			MPI_Finalize();
 			exit(0);
 		}
 	}
-		if (line_num > box_size) {
+		if (line_num > lattice_size) {
 			if (id == 0)
-				fprintf(stderr, "Error, not enough lines in box file for time step %d\n", restart_time);
+				fprintf(stderr, "Error, not enough lines in lattice file for time step %d\n", restart_time);
 			MPI_Finalize();
 			exit(0);
 		}
 
-	box_file.close();
+	lattice_file.close();
 
 	return;
 }
@@ -128,7 +128,7 @@ void Simulation::loadBox() {
 
 
 void Simulation::loadDispersal() {
-	/* load the dispersal box, or the seed locations, from the previous simulation. */
+	/* load the dispersal lattice, or the seed locations, from the previous simulation. */
 
 	int i, j, k, col_num;
 	int line_num = 0;
@@ -156,7 +156,7 @@ void Simulation::loadDispersal() {
 		}
 		while (getline(dispersal_file, line)) {
 			line_num++;
-			if (line_num > box_size) {
+			if (line_num > lattice_size) {
 				if (id == 0)
 					fprintf(stderr, "Error, too many lines in dispersal file for species %d\n", k);
 				MPI_Finalize();
@@ -170,7 +170,7 @@ void Simulation::loadDispersal() {
 			while (values >> value) {
 
 				col_num++;
-				if (col_num > box_size) {
+				if (col_num > lattice_size) {
 					if (id == 0)
 						fprintf(stderr, "Error, too many columns in dispersal file for species %d, line %d\n", k, line_num );
 					MPI_Finalize();
@@ -181,7 +181,7 @@ void Simulation::loadDispersal() {
 
 				if (value.find_first_not_of("0123456789.") == std::string::npos) {
 						try {
-							dispersal_box[line_num - 1][col_num - 1][k - 1] = stod(value);
+							dispersal_lattice[line_num - 1][col_num - 1][k - 1] = stod(value);
 						}
 						catch (...) {
 							if (id == 0)
@@ -197,14 +197,14 @@ void Simulation::loadDispersal() {
 					exit(0);
 				}
 			}
-			if (col_num < box_size) {
+			if (col_num < lattice_size) {
 				if (id == 0)
 					fprintf(stderr, "Error, not enough columns in dispersal file for species %d, line %d\n", k, line_num );
 				MPI_Finalize();
 				exit(0);
 			}
 		}
-			if (line_num > box_size) {
+			if (line_num > lattice_size) {
 				if (id == 0)
 					fprintf(stderr, "Error, not enough lines in dispersal file for species %d\n", k);
 				MPI_Finalize();

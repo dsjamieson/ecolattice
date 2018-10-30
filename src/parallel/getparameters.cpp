@@ -13,7 +13,7 @@
 void Simulation::checkInputFormat() {
 	/* check 'parameters.dat' for all parameters and correct format. can remove commented lines from parameters file, where comments are specified with '#'. */
 
-	const char *names[] = { "Seeds", "BoxSize", "Subdivision", "Species", "Delta", "MaxTimeStep", "InitialOccupancy",
+	const char *names[] = { "Seeds", "LatticeSize", "Subdivision", "Species", "Delta", "MaxTimeStep", "InitialOccupancy",
 						  "GerminationProbability", "OutfileBase", "OutfileDir", "SpeciesOccupancy", "SpeciesOccupancySdev",
 						  "JuvenileSurvival", "JuvenileSurvivalSdev", "AdultSurvival", "AdultSurvivalSdev", "MaximumCompetition",
 						  "MaximumCompetitionSdev", "DispersalProbability", "DispersalProbabilitySdev", "DispersalLength",

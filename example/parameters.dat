@@ -1,8 +1,8 @@
 Seeds = 12102 122 13372 124 127 972231	# List of seeds, positive integers	
 
-BoxSize = 20 					# Size of box sides 
+LatticeSize = 20 				# Number of lattice sites along one direction
 Species = 6						# Number of species 
-MaxTimeStep = 200				# Final time step of simulation
+MaxTimeStep = 10				# Final time step of simulation
 InitialOccupancy = 0.5	 		# Fraction of occupied sites at initial time
 GerminationProbability = 0.2	# Probability for germination to occur at a site for any species
 OutfileBase = test 				# Initial string in output filenames

@@ -50,10 +50,10 @@ Simulation::Simulation(std::string filename, int p_id) {
 	}
 
 	// parameters read from file (argument: filename)
-	getParameter(&box_size, "BoxSize", 1);
-	if (box_size < 0) {
+	getParameter(&lattice_size, "LatticeSize", 1);
+	if (lattice_size < 0) {
 		if (id == 0)
-			fprintf(stderr, "Error, BoxSize must be positive\n");
+			fprintf(stderr, "Error, LatticeSize must be positive\n");
 		MPI_Finalize();
 		exit(0);
 	}
@@ -90,7 +90,7 @@ Simulation::Simulation(std::string filename, int p_id) {
 
 
 	// allocate simulation arrays and seed random generator
-	max_random_count = (int64_t) 1000. * (4. * num_species * num_species + 5. * box_size * box_size);  // the maximum number of random draws used by the RNG in this simulation
+	max_random_count = (int64_t) 1000. * (4. * num_species * num_species + 5. * lattice_size * lattice_size);  // the maximum number of random draws used by the RNG in this simulation
 	allocSim();
 	getSeeds();
 
@@ -110,7 +110,7 @@ Simulation::Simulation(std::string filename, int p_id) {
 
 
 void Simulation::initializeRandomSimulation() {
-	/* initializes the simulation box with species locations, and draws random variates for species-specific parameters
+	/* initializes the simulation lattice with species locations, and draws random variates for species-specific parameters
 	(dispersal, competition, etc.). also checks that parameter values are appropriate. */
 
 	// set species specific parameters
@@ -123,7 +123,7 @@ void Simulation::initializeRandomSimulation() {
 	setRandomParameter(dispersal_length, num_species, "DispersalLength", 4);
 	setRandomParameter(intrinsic_fecundity, num_species, "Fecundity", 4);
 
-	initializeBox();
+	initializeLattice();
 
 	// set competition parameters
 	getParameter(&competition_lower_bound, "CompetitionLower", 0);
@@ -254,7 +254,7 @@ void Simulation::initializeRedoSimulation() {
 
 	getParameter(delta, num_species, "Delta", 2);
 	loadCompetition();
-	initializeBox();
+	initializeLattice();
 
 	if (random_count > max_random_count) {
 		if (id == 0)
@@ -271,13 +271,13 @@ void Simulation::initializeRedoSimulation() {
 
 void Simulation::initializeRestartSimulation() {
 	/* method used if a previous simulation failed before completing or if you want to extend the simulation.
-	continues the simulation from where it left off. this method initializes the box, reloads the parameters from
+	continues the simulation from where it left off. this method initializes the lattice, reloads the parameters from
 	the previous simulation, and starts up the RNG for the appropriate time step */
 
 	loadDispersal();
 	getParameter(delta, num_species, "Delta", 2);
 	loadCompetition();
-	loadBox();
+	loadLattice();
 
 	if (random_count > max_random_count) {
 		if (id == 0)
@@ -286,14 +286,14 @@ void Simulation::initializeRestartSimulation() {
 		exit(0);
 	}
 
-	global_random_generator.discard(max_random_count + 4 * box_size * box_size * restart_time - random_count);
+	global_random_generator.discard(max_random_count + 4 * lattice_size * lattice_size * restart_time - random_count);
 	random_count = 0;
 
 	return;
 }
 
 void Simulation::allocSim() {
-	/* allocate memory for all arrays used in simulations, including parameter arrays, box with species locations, and dispersal box with seed locations. */
+	/* allocate memory for all arrays used in simulations, including parameter arrays, lattice with species locations, and dispersal lattice with seed locations. */
 
 	int i, j, k;
 	delta = new int[num_species];
@@ -365,38 +365,38 @@ void Simulation::allocSim() {
 
 	}
 
-	box = new int *[box_size];
-	next_box = new int *[box_size];
-	dispersal_box = new double **[box_size];
-	next_dispersal_box = new double **[box_size];
-	if (!box || !next_box || !dispersal_box || !next_dispersal_box) {
-		fprintf(stderr, "Error, unable to allocate memory for box and dispersal box\n");
+	lattice = new int *[lattice_size];
+	next_lattice = new int *[lattice_size];
+	dispersal_lattice = new double **[lattice_size];
+	next_dispersal_lattice = new double **[lattice_size];
+	if (!lattice || !next_lattice || !dispersal_lattice || !next_dispersal_lattice) {
+		fprintf(stderr, "Error, unable to allocate memory for lattice and dispersal lattice\n");
 		MPI_Finalize();
 		exit(-1);
 	}
-	for (i = 0; i < box_size; i++) {
-		box[i] = new int[box_size];
-		next_box[i] = new int[box_size];
-		dispersal_box[i] = new double *[box_size];
-		next_dispersal_box[i] = new double *[box_size];
-		if (!box[i] || !next_box[i] || !dispersal_box[i] || !next_dispersal_box[i]) {
-			fprintf(stderr, "Error, unable to allocate memory for box and dispersal box\n");
+	for (i = 0; i < lattice_size; i++) {
+		lattice[i] = new int[lattice_size];
+		next_lattice[i] = new int[lattice_size];
+		dispersal_lattice[i] = new double *[lattice_size];
+		next_dispersal_lattice[i] = new double *[lattice_size];
+		if (!lattice[i] || !next_lattice[i] || !dispersal_lattice[i] || !next_dispersal_lattice[i]) {
+			fprintf(stderr, "Error, unable to allocate memory for lattice and dispersal lattice\n");
 			MPI_Finalize();
 			exit(-1);
 		}
-		for (j = 0; j < box_size; j++) {
-			box[i][j] = 0;
-			next_box[i][j] = 0;
-			dispersal_box[i][j] = new double[num_species];
-			next_dispersal_box[i][j] = new double[num_species];
-			if (!dispersal_box[i][j] || !next_dispersal_box[i][j]) {
-				fprintf(stderr, "Error, unable to allocate memory for dispersal box\n");
+		for (j = 0; j < lattice_size; j++) {
+			lattice[i][j] = 0;
+			next_lattice[i][j] = 0;
+			dispersal_lattice[i][j] = new double[num_species];
+			next_dispersal_lattice[i][j] = new double[num_species];
+			if (!dispersal_lattice[i][j] || !next_dispersal_lattice[i][j]) {
+				fprintf(stderr, "Error, unable to allocate memory for dispersal lattice\n");
 				MPI_Finalize();
 				exit(-1);
 			}
 			for (k = 0; k < num_species; k++) {
-				dispersal_box[i][j][k] = 0;
-				next_dispersal_box[i][j][k] = 0;
+				dispersal_lattice[i][j][k] = 0;
+				next_dispersal_lattice[i][j][k] = 0;
 			}
 		}
 	}
@@ -406,9 +406,9 @@ void Simulation::allocSim() {
 }
 
 
-void Simulation::initializeBox() {
-	/* initializes box with randomly located species, depending on the occupancy probability, which defines both the total
-	occupancy of the box and the species specific probabilities. also determines whether individuals are juveniles or adults
+void Simulation::initializeLattice() {
+	/* initializes lattice with randomly located species, depending on the occupancy probability, which defines both the total
+	occupancy of the lattice and the species specific probabilities. also determines whether individuals are juveniles or adults
 	with equal probability. */
 
 	int i, j;
@@ -417,13 +417,13 @@ void Simulation::initializeBox() {
 	std::bernoulli_distribution occupy_dist(initial_occupancy);
 	std::discrete_distribution<int> species_dist(species_occupancy, species_occupancy + num_species);
 
-	for (i = 0; i < box_size; i++) {
-		for (j = 0; j < box_size; j++) {
-			box[i][j] = occupy_dist(generateRandom());
-			if (stage_dist(generateRandom()) == 0 && box[i][j] != 0)
-				box[i][j] *= -1;
-			if (box[i][j] != 0) {
-				box[i][j] *= 1 + species_dist(generateRandom());
+	for (i = 0; i < lattice_size; i++) {
+		for (j = 0; j < lattice_size; j++) {
+			lattice[i][j] = occupy_dist(generateRandom());
+			if (stage_dist(generateRandom()) == 0 && lattice[i][j] != 0)
+				lattice[i][j] *= -1;
+			if (lattice[i][j] != 0) {
+				lattice[i][j] *= 1 + species_dist(generateRandom());
 			}
 		}
 	}
@@ -431,15 +431,15 @@ void Simulation::initializeBox() {
 }
 
 
-void Simulation::resetBox() {
-	/* for the current time step, set all elements of the box and the dispersal box to 0. used in simulation for the first time step (t = 0).  */
+void Simulation::resetLattice() {
+	/* for the current time step, set all elements of the lattice and the dispersal lattice to 0. used in simulation for the first time step (t = 0).  */
 	int i, j, k;
 
-	for (i = 0; i < box_size; i++) {
-		for (j = 0; j < box_size; j++) {
-			box[i][j] = 0;
+	for (i = 0; i < lattice_size; i++) {
+		for (j = 0; j < lattice_size; j++) {
+			lattice[i][j] = 0;
 			for (k = 0; k < num_species; k++) {
-				dispersal_box[i][j][k] = 0.;
+				dispersal_lattice[i][j][k] = 0.;
 			}
 		}
 	}
@@ -447,17 +447,17 @@ void Simulation::resetBox() {
 }
 
 
-void Simulation::resetNextBox() {
-	/* for the next time step, set all elements of the box and the dispersal box to 0. used in simulation so that workers
-	can reset their local copies of 'next_box' and 'next_dispersal_box' */
+void Simulation::resetNextLattice() {
+	/* for the next time step, set all elements of the lattice and the dispersal lattice to 0. used in simulation so that workers
+	can reset their local copies of 'next_lattice' and 'next_dispersal_lattice' */
 
 	int i, j, k;
 
-	for (i = 0; i < box_size; i++) {
-		for (j = 0; j < box_size; j++) {
-			next_box[i][j] = 0;
+	for (i = 0; i < lattice_size; i++) {
+		for (j = 0; j < lattice_size; j++) {
+			next_lattice[i][j] = 0;
 			for (k = 0; k < num_species; k++) {
-				next_dispersal_box[i][j][k] = 0.;
+				next_dispersal_lattice[i][j][k] = 0.;
 			}
 		}
 	}
@@ -474,7 +474,7 @@ std::mt19937& Simulation::generateRandom() {
 
 void Simulation::updateSingleSite(int i, int j) {
 	/* this method runs through all processes, including germination, survival, growth, reproduction, and death,
-	for a single site in the box. workers use this method to update their local copies of 'next_box' and 'next_dispersal_box' */
+	for a single site in the lattice. workers use this method to update their local copies of 'next_lattice' and 'next_dispersal_lattice' */
 
 	int k, l, kp, lp;
 	unsigned long long start_random_count = random_count;
@@ -499,7 +499,7 @@ void Simulation::updateSingleSite(int i, int j) {
 	int *neighborhood_abundance;
 	double **distance_probability;
 
-	this_species = abs(box[i][j]);  // species in this site i, j
+	this_species = abs(lattice[i][j]);  // species in this site i, j
 	
 	// if the site is open, determine whether or not something germinates with a Bernoulli probability based on the total number of seeds in the site
 	// if something germinates, select the species that germinates with probability equal to the relative abundance of each species's seeds in this site.
@@ -507,21 +507,21 @@ void Simulation::updateSingleSite(int i, int j) {
 		total_seeds = 0;
 	
 		for (k = 0; k < num_species; k++)
-			total_seeds += dispersal_box[i][j][k];
+			total_seeds += dispersal_lattice[i][j][k];
 
 		std::bernoulli_distribution germ_dist(1. - pow(1.- germination_probability, total_seeds));
 
 		if (germ_dist(generateRandom())) {
-			std::discrete_distribution<int> species_dist(dispersal_box[i][j], dispersal_box[i][j] + num_species);
-			next_box[i][j] = -abs(species_dist(generateRandom()) + 1);
+			std::discrete_distribution<int> species_dist(dispersal_lattice[i][j], dispersal_lattice[i][j] + num_species);
+			next_lattice[i][j] = -abs(species_dist(generateRandom()) + 1);
 		}
 		else {
-			next_box[i][j] = 0;
+			next_lattice[i][j] = 0;
 		}
 	}
 	else {
 		// if the site is not open, determine whether it's occupied by a juvenile or an adult
-		this_stage = box[i][j] / abs(box[i][j]);
+		this_stage = lattice[i][j] / abs(lattice[i][j]);
 		// the individual survives with stage-specific probability
 		if (this_stage > 0)
 			this_survival_probability = adult_survival_probability[this_species - 1] ;
@@ -536,7 +536,7 @@ void Simulation::updateSingleSite(int i, int j) {
 		std::bernoulli_distribution survival_dist(this_survival_probability);
 		// if species survives, it persists to next time step
 		if(survival_dist(generateRandom())) {
-			next_box[i][j] = box[i][j];
+			next_lattice[i][j] = lattice[i][j];
 
 			// determine abundance of each species in the neighborhood of the focal individual
 			// neighborhood limits depend on the parameter delta for this_species
@@ -563,14 +563,14 @@ void Simulation::updateSingleSite(int i, int j) {
 						kp = k;
 						lp = l;
 						if (i - this_delta + kp < 0)
-							kp += box_size - i;
-						else if (i - this_delta + kp > box_size - 1)
-							kp += -box_size;	
+							kp += lattice_size - i;
+						else if (i - this_delta + kp > lattice_size - 1)
+							kp += -lattice_size;	
 						if (j - this_delta + lp < 0)
-							lp += box_size - j;
-						else if (j - this_delta + lp > box_size - 1)
-							lp += -box_size;
-						neighborhood[l + (2 * this_delta + 1) * k] = box[i - this_delta + kp][j - this_delta + lp];
+							lp += lattice_size - j;
+						else if (j - this_delta + lp > lattice_size - 1)
+							lp += -lattice_size;
+						neighborhood[l + (2 * this_delta + 1) * k] = lattice[i - this_delta + kp][j - this_delta + lp];
 						if (neighborhood[l + (2 * this_delta + 1) * k] != 0) {
 							neighborhood_abundance[abs(neighborhood[l + (2 * this_delta + 1) * k]) - 1]++;
 							total_abundance++;
@@ -592,7 +592,7 @@ void Simulation::updateSingleSite(int i, int j) {
 				std::bernoulli_distribution stage_dist(growth_probability);
 
 				if (stage_dist(generateRandom()))
-					next_box[i][j] = abs(next_box[i][j]);
+					next_lattice[i][j] = abs(next_lattice[i][j]);
 			}
 			else {
 				// if focal individual is an adult, it will reproduce with a fecundity based on competition with individuals in its neighborhood
@@ -607,30 +607,30 @@ void Simulation::updateSingleSite(int i, int j) {
 
 				// the fecundity (equal to the number of seeds produced by the focal individuals) is spread over the entire matrix
 				// the number of seeds at each site is an exponential function of distance, quickly decaying depending on the dispersal length parameter
-				distance_probability = new double*[box_size];
+				distance_probability = new double*[lattice_size];
 				if (!distance_probability) {
 					fprintf(stderr, "Error, distance probability memory allocation failed for site %d %d\n", i, j);	
 					MPI_Finalize();
 					exit(-1);
 				}
-				for (k = 0; k < box_size; k++) {
-					distance_probability[k] = new double[box_size];
+				for (k = 0; k < lattice_size; k++) {
+					distance_probability[k] = new double[lattice_size];
 					if (!distance_probability[k]) {
 						fprintf(stderr, "Error, distance probability memory allocation failed for site %d %d\n", i, j);	
 						MPI_Finalize();
 						exit(-1);
 					}
-					for (l = 0; l < box_size; l++) {
-						distance_probability[k][l] = pow(std::min(abs(i - k), box_size - abs(i - k)), 2);
-						distance_probability[k][l] += pow(std::min(abs(j - l), box_size -  abs(j - l)), 2);
+					for (l = 0; l < lattice_size; l++) {
+						distance_probability[k][l] = pow(std::min(abs(i - k), lattice_size - abs(i - k)), 2);
+						distance_probability[k][l] += pow(std::min(abs(j - l), lattice_size -  abs(j - l)), 2);
 						distance_probability[k][l] = sqrt(distance_probability[k][l]);
 						distance_probability[k][l] = exp(log(this_dispersal_probability) / dispersal_length[this_species - 1] * distance_probability[k][l]);
 						distance_probability_sum += distance_probability[k][l];
 					}
 				}
-				for (k = 0; k < box_size; k++) {
-					for (l = 0; l < box_size; l++) {
-						next_dispersal_box[k][l][this_species - 1] += this_fecundity * distance_probability[k][l] / distance_probability_sum;
+				for (k = 0; k < lattice_size; k++) {
+					for (l = 0; l < lattice_size; l++) {
+						next_dispersal_lattice[k][l][this_species - 1] += this_fecundity * distance_probability[k][l] / distance_probability_sum;
 					}
 					delete[] distance_probability[k];
 				}
@@ -640,7 +640,7 @@ void Simulation::updateSingleSite(int i, int j) {
 		}
 		else {
 			// focal individual dies
-			next_box[i][j] = 0;
+			next_lattice[i][j] = 0;
 		}
 	}
 	// no matter what happened in this site, four random numbers will be discarded (the maximum number of random numbers used in the simulation)
@@ -651,19 +651,19 @@ void Simulation::updateSingleSite(int i, int j) {
 
 
 void Simulation::nextToThis() {
-	/* this method updates the species in the box at this time step to the next time step,
+	/* this method updates the species in the lattice at this time step to the next time step,
 	and sets the next time step to be unoccupied. does the same for seeds in the dispersal
-	box */
+	lattice */
 
 	int i, j, k;
 
-	for (i = 0; i < box_size; i++) {
-		for (j = 0; j < box_size; j++) {
-			box[i][j] = next_box[i][j];
-			next_box[i][j] = 0;
+	for (i = 0; i < lattice_size; i++) {
+		for (j = 0; j < lattice_size; j++) {
+			lattice[i][j] = next_lattice[i][j];
+			next_lattice[i][j] = 0;
 			for (k = 0; k < num_species; k++) {
-				dispersal_box[i][j][k] = next_dispersal_box[i][j][k];
-				next_dispersal_box[i][j][k] = 0;
+				dispersal_lattice[i][j][k] = next_dispersal_lattice[i][j][k];
+				next_dispersal_lattice[i][j][k] = 0;
 			}
 		}
 	}
@@ -671,34 +671,34 @@ void Simulation::nextToThis() {
 }
 
 
-void Simulation::saveBox(int time_step) {
-	/* saves the species locations in the box from the current time step to file */
+void Simulation::saveLattice(int time_step) {
+	/* saves the species locations in the lattice from the current time step to file */
 
 	int i, j;	
 
-	std::ofstream box_file;
-	box_file.open(outfile_base+"_" + std::to_string(time_step) + ".csv", std::ios::out | std::ios::trunc);
+	std::ofstream lattice_file;
+	lattice_file.open(outfile_base+"_" + std::to_string(time_step) + ".csv", std::ios::out | std::ios::trunc);
 
-	if (!box_file.is_open()) {
+	if (!lattice_file.is_open()) {
 			if (id == 0)
-				fprintf(stderr, "Error, could not open time step %d box file file to load\n", time_step);
+				fprintf(stderr, "Error, could not open time step %d lattice file file to load\n", time_step);
 			MPI_Finalize();
 			exit(0);
 	}
 
-	for (i = 0; i < box_size; i++) {
-		for (j = 0; j < box_size; j++) {
-			if (box[i][j] < 0)
-				box_file << box[i][j];
+	for (i = 0; i < lattice_size; i++) {
+		for (j = 0; j < lattice_size; j++) {
+			if (lattice[i][j] < 0)
+				lattice_file << lattice[i][j];
 			else
-				box_file << " " << box[i][j];
-			if (j != box_size - 1)
-				box_file << ", ";
+				lattice_file << " " << lattice[i][j];
+			if (j != lattice_size - 1)
+				lattice_file << ", ";
 			}
-			box_file << std::endl;
+			lattice_file << std::endl;
 		}
 
-	box_file.close();
+	lattice_file.close();
 
 	return;
 }
@@ -860,8 +860,8 @@ void Simulation::saveProperties() {
 }
 
 
-int Simulation::getBoxSize() {
-	return box_size;
+int Simulation::getLatticeSize() {
+	return lattice_size;
 }
 
 
@@ -876,12 +876,12 @@ int Simulation::getMaxTimeStep() {
 
 
 int Simulation::getSite(int i, int j) {
-	return box[i][j];
+	return lattice[i][j];
 }
 
 
 int Simulation::getNextSite(int i, int j) {
-	return next_box[i][j];
+	return next_lattice[i][j];
 }
 
 
@@ -897,33 +897,33 @@ unsigned long long Simulation::getRandomCount() {
 
 
 double Simulation::getDispersal(int i, int j, int s) {
-	return dispersal_box[i][j][s];
+	return dispersal_lattice[i][j][s];
 }
 
 
 double Simulation::getNextDispersal(int i, int j, int s) {
-	return next_dispersal_box[i][j][s];
+	return next_dispersal_lattice[i][j][s];
 }
 
 
 void Simulation::setSite(int i, int j, int s) {
-	box[i][j] = s;
+	lattice[i][j] = s;
 	return;
 }
 
 
 void Simulation::addSite(int i, int j, int s) {
-	box[i][j] += s;
+	lattice[i][j] += s;
 	return;
 }
 
 void Simulation::setDispersal(int i, int j, int s, double t) {
-	dispersal_box[i][j][s] = t;
+	dispersal_lattice[i][j][s] = t;
 	return;
 }
 
 void Simulation::addDispersal(int i, int j, int s, double t) {
-	dispersal_box[i][j][s] += t;
+	dispersal_lattice[i][j][s] += t;
 	return;
 }
 
