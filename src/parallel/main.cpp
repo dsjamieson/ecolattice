@@ -35,13 +35,15 @@ int main(int argc, char* argv[]) {
 		// requires file name with list of parameters and worker ID number
 		Simulation sim(argv[1], myid);
 
-		int i, j, k, l, m, lattice_size, total_workers, num_species, time_step, max_time_step;
+		int i, j, k, l, m, lattice_size, total_workers, num_species;
+		int start_time, time_step, max_time_step;
 		int this_site, buffer_size, this_species, this_stage;
 		int *task_site_number;
 		double *buffer;
 
 		lattice_size = sim.getLatticeSize();  // number of cells in one dimension of the lattice
 		num_species = sim.getSpecies();  // number of species in the simulation
+		start_time = sim.getRestartTime() + 1;
 		max_time_step = sim.getMaxTimeStep();  // duration of the simulation
 
 		// allocate buffer
@@ -80,11 +82,13 @@ int main(int argc, char* argv[]) {
 		if (myid == 0) {
 
 			// central task saves initial state at time 0, including parameters, competition matrices, and initial individual locations
-			sim.saveCompetition();
-			sim.saveLattice(0);
-			sim.resetLattice();
+			if (start_time == 1) {
+				sim.saveCompetition();
+				sim.saveLattice(0);
+				sim.resetLattice();
+			}
 
-			for (time_step = 1; time_step < max_time_step + 1; time_step++) {
+			for (time_step = start_time; time_step < max_time_step + 1; time_step++) {
 
 				// central task receives partially complete buffer from each worker, including species and seed positions at sites assigned to that worker
 				// adds these locations to the array 'lattice' as a part of the object 'sim' (and the same for dispersal lattice)
@@ -117,6 +121,7 @@ int main(int argc, char* argv[]) {
 
 				// central task saves lattice from current time step to file and resets lattice and dispersal lattice for next time step
 				sim.saveLattice(time_step);
+				sim.saveDispersal(time_step);
 				sim.resetLattice();
 
 				fprintf(stdout, "done step: %d\n", time_step);
@@ -127,7 +132,7 @@ int main(int argc, char* argv[]) {
 		// each worker is assigned a certain number of sites at which it will update the species and seed locations in 'next_lattice' and 'next_dispersal_lattice'
 		else if (task_site_number[myid - 1] < lattice_size * lattice_size) {
 
-			for (time_step = 1; time_step < max_time_step + 1; time_step++) {
+			for (time_step = start_time; time_step < max_time_step + 1; time_step++) {
 
 				// worker clears its copy of buffer before updating sites
 				for (k = 0; k < buffer_size; k++)

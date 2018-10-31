@@ -14,31 +14,37 @@
 #include "simulation.h"
 
 void Simulation::saveDispersal(int time_step) {
-	/* the dispersal lattice (locations of seeds of each species) is saved for the current time step */
+	/* the dispersal lattice (locations of seeds of each species) is saved for the current time step.
+	even and odd time steps are saved, so there is always one complete dispersal table to use to
+	restart the simulation. */
 
 	int i, j, k;
-	std::ofstream dispersal_file;
+	FILE * dispersal_file;
+	std::string filename;
 
 	for (k = 1; k < num_species + 1; k++) {
-
-		dispersal_file.open(outfile_base + "_dispersal_s" + std::to_string(k) + "_" + std::to_string(time_step % 2) + ".csv", std::ios::out | std::ios::trunc);
-
-		if (!dispersal_file.is_open()) {
+		
+		filename = outfile_base + "_dispersal_s" + std::to_string(k) + "_" + std::to_string(time_step % 2) + ".csv";	
+		dispersal_file = fopen(filename.c_str(), "w+");
+		
+		if (!dispersal_file) {
 			if (id == 0)
 				fprintf(stderr, "Error, could not open dispersal file for species %d to save\n", k);
 			MPI_Finalize();
 			exit(0);
 		}
 
-		dispersal_file << "# Dispersal for species " << k + 1 << ", time step " << time_step <<  std::endl;
+		fprintf(dispersal_file, "# Dispersal for species %d, time step %d\n", k, time_step);
 
 		for (i = 0; i < lattice_size; i++) {
 			for (j = 0; j < lattice_size; j++) {
-				dispersal_file << dispersal_lattice[i][j][k - 1] << ", ";
+				fprintf(dispersal_file, "\t%.5f", dispersal_lattice[i][j][k - 1]);
+				if (j < lattice_size - 1)
+					fprintf(dispersal_file, ",");
 			}
-			dispersal_file << std::endl;
+			fprintf(dispersal_file, "\n");
 		}
-		dispersal_file.close();
+		fclose(dispersal_file);
 	}
 
 	return;
@@ -47,7 +53,8 @@ void Simulation::saveDispersal(int time_step) {
 
 
 void Simulation::loadLattice() {
-	/* load the lattice, or the species locations, from the previous simulation. */
+	/* load the lattice, or the species locations, from the previous simulation (simulation reloaded based on
+	"RestartTime." */
 
 	int i, j, k, col_num;
 	int line_num = 0;
@@ -55,7 +62,7 @@ void Simulation::loadLattice() {
 	std::string line;
 	std::string value;
 
-	lattice_file.open(outfile_base + "_" + std::to_string(restart_time) + ".csv", std::ios::out | std::ios::trunc);
+	lattice_file.open(outfile_base + "_" + std::to_string(restart_time) + ".csv");
 
 	if (!lattice_file.is_open()) {
 		if (id == 0)
@@ -86,9 +93,10 @@ void Simulation::loadLattice() {
 				exit(0);
 			}
 
-			value = value.substr(0, value.size() - 1);
+			if (col_num < lattice_size)
+				value = value.substr(0, value.size() - 1);
 
-			if (value.find_first_not_of("0123456789") == std::string::npos) {
+			if (value.find_first_not_of("-0123456789") == std::string::npos) {
 					try {
 						lattice[line_num - 1][col_num - 1] = stoi(value);
 					}
@@ -101,14 +109,14 @@ void Simulation::loadLattice() {
 			}
 			else {
 				if (id == 0)
-					fprintf(stderr, "Error, invalid lattice file value given for time step %d, in line %d column %d, to positive integers\n", restart_time, line_num, col_num );
+					fprintf(stderr, "Error, invalid lattice file value given for time step %d, in line %d column %d, to positive integers\n", restart_time, line_num, col_num);
 				MPI_Finalize();
 				exit(0);
 			}
 		}
 		if (col_num < lattice_size) {
 			if (id == 0)
-				fprintf(stderr, "Error, not enough columns in lattice file for time step %d, line %d\n", restart_time, line_num );
+				fprintf(stderr, "Error, not enough columns in lattice file for time step %d, line %d\n", restart_time, line_num);
 			MPI_Finalize();
 			exit(0);
 		}
@@ -128,7 +136,8 @@ void Simulation::loadLattice() {
 
 
 void Simulation::loadDispersal() {
-	/* load the dispersal lattice, or the seed locations, from the previous simulation. */
+	/* load the dispersal lattice, or the seed locations, from the previous simulation. (simulation reloaded based on
+	"RestartTime." */
 
 	int i, j, k, col_num;
 	int line_num = 0;
@@ -138,7 +147,8 @@ void Simulation::loadDispersal() {
 
 	for (k = 1; k < num_species + 1; k++) {
 
-		dispersal_file.open(outfile_base + "_dispersal_s" + std::to_string(k) + "_" + std::to_string(restart_time % 2) + ".csv", std::ios::out | std::ios::trunc);
+		dispersal_file.open(outfile_base + "_dispersal_s" + std::to_string(k) + "_" + std::to_string(restart_time % 2) + ".csv");
+		line_num = 0;
 
 		if (!dispersal_file.is_open()) {
 			if (id == 0)
@@ -176,8 +186,9 @@ void Simulation::loadDispersal() {
 					MPI_Finalize();
 					exit(0);
 				}
-
-				value = value.substr(0, value.size() - 1);
+				
+				if (col_num < lattice_size)
+					value = value.substr(0, value.size() - 1);
 
 				if (value.find_first_not_of("0123456789.") == std::string::npos) {
 						try {
@@ -229,7 +240,7 @@ void Simulation::loadCompetition() {
 	std::string value;
 	std::string name;
 
-	const char *names[] = {  "SpeciesOccupancy", "JuvenileSurvival",  "AdultSurvival",  "MaximumCompetition",
+	const char *names[] = { "SpeciesOccupancy", "JuvenileSurvival",  "AdultSurvival",  "MaximumCompetition",
 						     "DispersalProbability", "DispersalLength", "Fecundity" };
 
 	double **parameters = new double*[7];
@@ -265,20 +276,20 @@ void Simulation::loadCompetition() {
 		getline(competition_file, line);
 		line_num++;
 
-		std::istringstream values( line );
+		std::istringstream values(line);
 
 		while (values >> value) {
 
 			col_num++;
 			if (col_num > num_species) {
 				if (id == 0)
-					fprintf(stderr, "Error, too many columns in competition file, line %d\n", line_num );
+					fprintf(stderr, "Error, too many columns in competition file, line %d\n", line_num);
 				MPI_Finalize();
 				exit(0);
 			}
 
 			if (col_num == 1) {
-				if (value.compare("reset") == 0 && line_num / 2 - 1 < 5 ) {
+				if (value.compare("reset") == 0 && line_num / 2 - 1 < 5) {
 					std::string name(names[ line_num/2 - 1]);
 					int type = 2;
 					if (line_num == 2)
@@ -300,7 +311,7 @@ void Simulation::loadCompetition() {
 					}
 				catch (...) {
 					if (id == 0)
-						fprintf(stderr, "Error, could not convert value given for competition file line %d column %d to double\n", line_num, col_num );
+						fprintf(stderr, "Error, could not convert value given for competition file line %d column %d to double\n", line_num, col_num);
 					MPI_Finalize();
 					exit(0);
 				}
@@ -348,7 +359,7 @@ void Simulation::loadCompetition() {
 		line_num++;
 		col_num = 0;
 
-		std::istringstream values( line );
+		std::istringstream values(line);
 
 			while (values >> value) {
 
@@ -410,7 +421,7 @@ void Simulation::loadCompetition() {
 		line_num++;
 		col_num = 0;
 
-		std::istringstream values( line );
+		std::istringstream values(line);
 
 			while (values >> value) {
 				col_num++;
@@ -446,7 +457,7 @@ void Simulation::loadCompetition() {
 		if (line_num == 16 + 2 * num_species)
 			break;
 	}
-	if(line_num < 16 + 2 * num_species) {
+	if (line_num < 16 + 2 * num_species) {
 		if (id == 0)
 			fprintf(stderr, "Error, not enough lines from growth competition in competition file, given the number of species\n");
 		MPI_Finalize();

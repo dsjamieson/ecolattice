@@ -85,7 +85,7 @@ Simulation::Simulation(std::string filename, int p_id) {
 
 
 	// allocate simulation arrays and seed random generator
-	max_random_count = (int64_t) 1000. * (4. * num_species * num_species + 5. * lattice_size * lattice_size);  // the maximum number of random draws used by the RNG in this simulation
+	max_random_count = (unsigned long long) 1000. * (4. * num_species * num_species + 5. * lattice_size * lattice_size);  // the maximum number of random draws used by the RNG in this simulation
 	allocSim();
 	getSeeds();
 
@@ -106,6 +106,15 @@ Simulation::Simulation(std::string filename, int p_id) {
 	getImbalanceMean();
 	getDiscreteTransitivity();
 	getFecundityGrowthCorrelation();
+
+	if (random_count > max_random_count) {
+		if (id == 0)
+			fprintf(stderr, "Error, too many random numbers used to generate initial conditions. Probable causes are the parameterization of TNormal distribution or severe competition correlation\n");
+		exit(0);
+	}
+
+	global_random_generator.discard(max_random_count - random_count);
+	random_count = 0;
 
 }
 
@@ -221,33 +230,18 @@ void Simulation::initializeRandomSimulation() {
 	if (fecundity_transitivity_type != 0 || growth_transitivity_type!=0)
 		setCompetitionTransitivity();
 
-	if (random_count > max_random_count) {
-		if (id == 0)
-			fprintf(stderr, "Error, too many random numbers used to generate initial conditions. Probable causes are the parameterization of TNormal distribution or severe competition correlation\n");
-		exit(0);
-	}
-
-	global_random_generator.discard(max_random_count - random_count);
-	random_count = 0;
-
 	return;
+
 }
 
 void Simulation::initializeRedoSimulation() {
-
+	/* method used to start a ew simulation with the same random parameters, used for replicates.
+	sses competition matrices, fecundities, occupancies, etc. from file, specified in 
+	"CompetitionFile." */
 
 	getParameter(delta, num_species, "Delta", 2);
 	loadCompetition();
 	initializeLattice();
-
-	if (random_count > max_random_count) {
-		if (id == 0)
-			fprintf(stderr, "Error, too many random numbers used to generate initial conditions. Probable causes are the parameterization of TNormal distribution or severe competition correlation\n");
-		exit(0);
-	}
-
-	global_random_generator.discard(max_random_count - random_count);
-	random_count = 0;
 
 	return;
 }
@@ -261,15 +255,6 @@ void Simulation::initializeRestartSimulation() {
 	getParameter(delta, num_species, "Delta", 2);
 	loadCompetition();
 	loadLattice();
-
-	if (random_count > max_random_count) {
-		if (id == 0)
-			fprintf(stderr, "Error, too many random numbers used to generate initial conditions. Probable causes are the parameterization of TNormal distribution or severe competition correlation\n");
-		exit(0);
-	}
-
-	global_random_generator.discard(max_random_count + 4 * lattice_size * lattice_size * restart_time - random_count);
-	random_count = 0;
 
 	return;
 }
@@ -400,6 +385,7 @@ void Simulation::initializeLattice() {
 			}
 		}
 	}
+
 	return;
 }
 
@@ -416,6 +402,7 @@ void Simulation::resetLattice() {
 			}
 		}
 	}
+
 	return;
 }
 
@@ -508,7 +495,7 @@ void Simulation::updateSingleSite(int i, int j) {
 
 		std::bernoulli_distribution survival_dist(this_survival_probability);
 		// if species survives, it persists to next time step
-		if(survival_dist(generateRandom())) {
+		if (survival_dist(generateRandom())) {
 			next_lattice[i][j] = lattice[i][j];
 
 			// determine abundance of each species in the neighborhood of the focal individual
