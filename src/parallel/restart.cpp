@@ -243,7 +243,7 @@ void Simulation::loadCompetition() {
 	parameters[6] = intrinsic_fecundity;
 
 	std::ifstream competition_file;
-	competition_file.open(competition_filename, std::ios::out | std::ios::trunc);
+	competition_file.open(competition_filename);
 
 	if (!competition_file.is_open()) {
 			if (id == 0)
