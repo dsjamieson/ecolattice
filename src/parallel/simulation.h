@@ -36,7 +36,6 @@ class Simulation {
 		unsigned long long getRandomCount();
 		void saveLattice(int time_step);
 		void saveCompetition();
-		void saveProperties();
 		void saveDispersal(int time_step);
 		void nextToThis();
 

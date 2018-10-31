@@ -28,7 +28,6 @@ int main(int argc, char* argv[]) {
 	
 	// save initial state at time 0, including parameters, competition matrices, and initial positions of individuals
 	sim.saveCompetition();
-	sim.saveProperties();
 	sim.saveLattice(0);
 
 	lattice_size = sim.getLatticeSize();  // number of cells in one dimension of the lattice

@@ -232,7 +232,7 @@ void Simulation::loadCompetition() {
 	const char *names[] = {  "SpeciesOccupancy", "JuvenileSurvival",  "AdultSurvival",  "MaximumCompetition",
 						     "DispersalProbability", "DispersalLength", "Fecundity" };
 
-	double **parameters = new double*[6];
+	double **parameters = new double*[7];
 
 	parameters[0] = species_occupancy;
 	parameters[1] = juvenile_survival_probability;
@@ -267,38 +267,171 @@ void Simulation::loadCompetition() {
 
 		std::istringstream values( line );
 
+		while (values >> value) {
+
+			col_num++;
+			if (col_num > num_species) {
+				if (id == 0)
+					fprintf(stderr, "Error, too many columns in competition file, line %d\n", line_num );
+				MPI_Finalize();
+				exit(0);
+			}
+
+			if (col_num == 1) {
+				if (value.compare("reset") == 0 && line_num / 2 - 1 < 5 ) {
+					std::string name(names[ line_num/2 - 1]);
+					int type = 2;
+					if (line_num == 2)
+						type = 3;
+					if (line_num/2 - 1 > 4)
+						type = 4;
+					setRandomParameter(parameters[line_num / 2 - 1], num_species, name, type);
+					break;
+				}
+			}
+
+			if(col_num < num_species)
+				value = value.substr(0, value.size() - 1);
+
+			if (value.find_first_not_of("0123456789.") == std::string::npos) {
+
+				try {
+					parameters[line_num / 2 - 1][col_num - 1] = stod(value);
+					}
+				catch (...) {
+					if (id == 0)
+						fprintf(stderr, "Error, could not convert value given for competition file line %d column %d to double\n", line_num, col_num );
+					MPI_Finalize();
+					exit(0);
+				}
+			}
+			else {
+				if (id == 0)
+					fprintf(stderr, "Error, invalid competition file value given in line %d column %d, to double\n", line_num, col_num);
+				MPI_Finalize();
+				exit(0);
+			}
+
+		}
+
+		if (line_num == 14)
+			break;
+
+	}
+
+	if (line_num < 14) {
+		if (id == 0)
+			fprintf(stderr, "Error, not enough lines from species specific parameters in competition file\n");
+		MPI_Finalize();
+		exit(0);
+
+	}
+
+	if (getline(competition_file, line)) {
+		line_num++;
+		if (trimString(line).size() != 0 ) {
+				if (id == 0)
+					fprintf(stderr, "Error, formatting issue, line %d in competition file is a not comment\n", line_num);
+				MPI_Finalize();
+				exit(0);
+		}
+	}
+	else {
+		if (id == 0)
+			fprintf(stderr, "Error, competition file ends before fecundity competition loaded\n");
+		MPI_Finalize();
+		exit(0);
+	}
+
+	while (getline(competition_file, line)) {
+
+		line_num++;
+		col_num = 0;
+
+		std::istringstream values( line );
+
 			while (values >> value) {
 
 				col_num++;
 				if (col_num > num_species) {
 					if (id == 0)
-						fprintf(stderr, "Error, too many columns in competition file, line %d\n", line_num );
+						fprintf(stderr, "Error, too many columns in competition file, line %d\n", line_num);
+					MPI_Finalize();
+					exit(0);
+				}			
+
+				if(col_num < num_species)
+					value = value.substr(0, value.size() - 1);
+
+				if (value.find_first_not_of("-0123456789.") == std::string::npos) {
+					try {
+						competition_fecundity[line_num - 16][col_num - 1] = stod(value);
+					}
+					catch (...) {
+						if (id == 0)
+							fprintf(stderr, "Error, could not convert value given for competition file line %d column %d to double\n", line_num, col_num);
+						MPI_Finalize();
+						exit(0);
+					}
+				}
+				else {
+					if (id == 0)
+						fprintf(stderr, "Error, invalid competition file value given in line %d column %d, to double\n", line_num, col_num);
+					MPI_Finalize();
+					exit(0);
+				}
+			}
+		if (line_num == 15 + num_species)
+			break;
+	}
+	if (line_num < 15 + num_species) {
+		if (id == 0)
+			fprintf(stderr, "Error, not enough lines from fecundity competition in competition file, given the number of species\n");
+		MPI_Finalize();
+		exit(0);
+	}
+	if (getline(competition_file, line)) {
+		line_num++;
+		if (trimString(line).size() != 0) {
+				if (id == 0)
+					fprintf(stderr, "Error, formatting issue, line %d in competition file is a not comment\n", line_num);
+				MPI_Finalize();
+				exit(0);
+		}
+	}
+	else {
+		if (id == 0)
+			fprintf(stderr, "Error, competition file ends before growth competition loaded\n");
+		MPI_Finalize();
+		exit(0);
+	}
+
+	while (getline(competition_file, line)) {
+		line_num++;
+		col_num = 0;
+
+		std::istringstream values( line );
+
+			while (values >> value) {
+				col_num++;
+				if (col_num > num_species) {
+					if (id == 0)
+						fprintf(stderr, "Error, too many columns in competition file, line %d\n", line_num);
 					MPI_Finalize();
 					exit(0);
 				}
 
-				if (col_num == 1) {
-					if (value.compare("reset") && line_num / 2 - 1 < 5 ) {
-						std::string name(names[ line_num/2 - 1]);
-						int type = 2;
-						if (line_num == 2)
-							type = 3;
-						if (line_num/2 - 1 > 4)
-							type = 4;
-						setRandomParameter(parameters[line_num / 2 - 1], num_species, name, type);
-						break;
-					}
-				}
+				if(col_num < num_species)
+					value = value.substr(0, value.size() - 1);
 
-				value = value.substr(0, value.size() - 1);
+				if (value.find_first_not_of("-0123456789.") == std::string::npos) {
 
-				if (value.find_first_not_of("0123456789.") == std::string::npos) {
 						try {
-							parameters[line_num / 2 - 1][col_num - 1] = stod(value);
+							competition_growth[line_num - 17 - num_species][col_num - 1] = stod(value);
 						}
 						catch (...) {
 							if (id == 0)
-								fprintf(stderr, "Error, could not convert value given for competition file line %d column %d to double\n", line_num, col_num );
+								fprintf(stderr, "Error, could not convert value given for competition file line %d column %d to double\n", line_num, col_num);
 							MPI_Finalize();
 							exit(0);
 						}
@@ -310,146 +443,22 @@ void Simulation::loadCompetition() {
 					exit(0);
 				}
 			}
-			if (line_num == 14)
-				break;
-		}
+		if (line_num == 16 + 2 * num_species)
+			break;
+	}
+	if(line_num < 16 + 2 * num_species) {
+		if (id == 0)
+			fprintf(stderr, "Error, not enough lines from growth competition in competition file, given the number of species\n");
+		MPI_Finalize();
+		exit(0);
 
-		if (line_num < 14) {
-			if (id == 0)
-				fprintf(stderr, "Error, not enough lines from species specific parameters in competition file\n");
-			MPI_Finalize();
-			exit(0);
+	}
 
-		}
+	delete[] parameters;
 
-		if (getline(competition_file, line)) {
-			line_num++;
-			if (trimString(line).size() != 0 ) {
-					if (id == 0)
-						fprintf(stderr, "Error, formatting issue, line %d in competition file is a not comment\n", line_num);
-					MPI_Finalize();
-					exit(0);
-			}
-		}
-		else {
-			if (id == 0)
-				fprintf(stderr, "Error, competition file ends before fecundity competition loaded\n");
-			MPI_Finalize();
-			exit(0);
-		}
+	competition_file.close();
 
-		while (getline(competition_file, line)) {
-
-			line_num++;
-			col_num = 0;
-
-			std::istringstream values( line );
-
-				while (values >> value) {
-
-					col_num++;
-					if (col_num > num_species) {
-						if (id == 0)
-							fprintf(stderr, "Error, too many columns in competition file, line %d\n", line_num);
-						MPI_Finalize();
-						exit(0);
-					}			
-
-					value = value.substr(0, value.size() - 1);
-
-					if (value.find_first_not_of("-0123456789.") == std::string::npos) {
-							try {
-								competition_fecundity[line_num - 16][col_num - 1] = stod(value);
-							}
-							catch (...) {
-								if (id == 0)
-									fprintf(stderr, "Error, could not convert value given for competition file line %d column %d to double\n", line_num, col_num);
-								MPI_Finalize();
-								exit(0);
-							}
-					}
-					else {
-						if (id == 0)
-							fprintf(stderr, "Error, invalid competition file value given in line %d column %d, to double\n", line_num, col_num);
-						MPI_Finalize();
-						exit(0);
-					}
-				}
-			if (line_num == 15 + num_species)
-				break;
-		}
-		if (line_num < 15 + num_species) {
-			if (id == 0)
-				fprintf(stderr, "Error, not enough lines from fecundity competition in competition file, given the number of species\n");
-			MPI_Finalize();
-			exit(0);
-		}
-		if (getline(competition_file, line)) {
-			line_num++;
-			if (trimString(line).size() != 0) {
-					if (id == 0)
-						fprintf(stderr, "Error, formatting issue, line %d in competition file is a not comment\n", line_num);
-					MPI_Finalize();
-					exit(0);
-			}
-		}
-		else {
-			if (id == 0)
-				fprintf(stderr, "Error, competition file ends before growth competition loaded\n");
-			MPI_Finalize();
-			exit(0);
-		}
-
-		while (getline(competition_file, line)) {
-			line_num++;
-			col_num = 0;
-
-			std::istringstream values( line );
-
-				while (values >> value) {
-					col_num++;
-					if (col_num > num_species) {
-						if (id == 0)
-							fprintf(stderr, "Error, too many columns in competition file, line %d\n", line_num);
-						MPI_Finalize();
-						exit(0);
-					}
-
-					value = value.substr(0, value.size() - 1);
-
-					if (value.find_first_not_of("-0123456789.") == std::string::npos) {
-
-							try {
-								competition_growth[line_num - 17 - num_species][col_num - 1] = stod(value);
-							}
-							catch (...) {
-								if (id == 0)
-									fprintf(stderr, "Error, could not convert value given for competition file line %d column %d to double\n", line_num, col_num);
-								MPI_Finalize();
-								exit(0);
-							}
-					}
-					else {
-						if (id == 0)
-							fprintf(stderr, "Error, invalid competition file value given in line %d column %d, to double\n", line_num, col_num);
-						MPI_Finalize();
-						exit(0);
-					}
-				}
-			if (line_num == 16 + 2 * num_species)
-				break;
-		}
-		if(line_num < 16 + 2 * num_species) {
-			if (id == 0)
-				fprintf(stderr, "Error, not enough lines from growth competition in competition file, given the number of species\n");
-			MPI_Finalize();
-			exit(0);
-
-		}
-	
-		competition_file.close();
-
-		return;
+	return;
 
 }
 

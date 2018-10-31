@@ -106,6 +106,12 @@ Simulation::Simulation(std::string filename, int p_id) {
 		// start a new simulation
 		initializeRandomSimulation();
 	}
+
+	// calculate properties of pairwise and community-level interactions
+	getImbalanceMean();
+	getDiscreteTransitivity();
+	getFecundityGrowthCorrelation();
+
 }
 
 
@@ -230,11 +236,6 @@ void Simulation::initializeRandomSimulation() {
 	// if competition is transitive (community forms a hierarchy) or intransitive (community has loops breaking hierarchy)
 	if (fecundity_transitivity_type != 0 || growth_transitivity_type!=0)
 		setCompetitionTransitivity();
-
-	// calculate properties of pairwise and community-level interactions
-	getImbalanceMean();
-	getDiscreteTransitivity();
-	getFecundityGrowthCorrelation();
 
 	if (random_count > max_random_count) {
 		if (id == 0)
@@ -725,42 +726,58 @@ void Simulation::saveCompetition() {
 	competition_file << "# Species Occupancy:" << std::endl;
 	for (i = 0; i < num_species; i++) {
 		competition_file << " " << species_occupancy[i];
+		if (i < num_species-1)
+			competition_file << ",";
 	}
 	competition_file << std::endl;
 
 	competition_file << "# Juvenile Survival:" << std::endl;
 	for (i = 0; i < num_species; i++) {
 		competition_file << " " << juvenile_survival_probability[i];
+		if (i < num_species-1)
+			competition_file << ",";
+
 	}
 	competition_file << std::endl;
 
 	competition_file << "# Adult Survival:" << std::endl;
 	for (i = 0; i < num_species; i++) {
 		competition_file << " " << adult_survival_probability[i];
+		if (i < num_species-1)
+			competition_file << ",";
+
 	}
 	competition_file << std::endl;
 
 	competition_file << "# Maximum Competition:" << std::endl;
 	for (i = 0; i < num_species; i++) {
 		competition_file << " " << maximum_competition[i];
+		if (i < num_species-1)
+			competition_file << ",";
 	}
 	competition_file << std::endl;
 
 	competition_file << "# Dispersal probability:" << std::endl;
 	for (i = 0; i < num_species; i++) {
 		competition_file << " " << dispersal_probability[i];
+		if (i < num_species-1)
+			competition_file << ",";
 	}
 	competition_file << std::endl;
 
 	competition_file << "# Dispersal length:" << std::endl;
 	for (i = 0; i < num_species; i++) {
 		competition_file << " " << dispersal_length[i];
+		if (i < num_species-1)
+			competition_file << ",";
 	}
 	competition_file << std::endl;
 
 	competition_file << "# Intrinsic fecundity:" << std::endl;
 	for (i = 0; i < num_species; i++) {
 		competition_file << " " << intrinsic_fecundity[i];
+		if (i < num_species-1)
+			competition_file << ",";
 	}
 	competition_file << std::endl;
 	
@@ -793,12 +810,16 @@ void Simulation::saveCompetition() {
 	competition_file << "# fecundity transitivity row sum:" << std::endl;
 	for (i = 0; i < num_species; i++) {
 		competition_file << " " << fecundity_row_sum[i];
+		if (i < num_species-1)
+			competition_file << ",";
 	}
 	competition_file << std::endl;
 
 	competition_file << "# growth row sum:" << std::endl;
 	for (i = 0; i < num_species; i++) {
 		competition_file << " " << growth_row_sum[i];
+		if (i < num_species-1)
+			competition_file << ",";
 	}
 	competition_file << std::endl;
 
@@ -828,37 +849,17 @@ void Simulation::saveCompetition() {
 			competition_file << std::endl;
 		}
 
+	competition_file <<  "# Fecundity imbalance mean:" << std::endl  << fecundity_imbalance_mean <<  std::endl;
+	competition_file <<  "# Growth imbalance mean:" << std::endl  << growth_imbalance_mean <<  std::endl;
+	competition_file <<  "# Fecundity relative intransitivity:" << std::endl  << fecundity_relative_intransitivity <<  std::endl;
+	competition_file <<  "# Growth relative intransitivity:" << std::endl  << growth_relative_intransitivity <<  std::endl;
+	competition_file <<  "# Fecundity-growth cross correlation:" << std::endl  << fecundity_growth_correlation <<  std::endl;
+
 	competition_file.close();
 
 	return;
 
 }
-
-
-void Simulation::saveProperties() {
-
-	std::ofstream properties_file;
-	properties_file.open(outfile_base + "_properties.csv", std::ios::out | std::ios::trunc);
-
-	if (!properties_file.is_open()) {
-			if (id == 0)
-				fprintf(stderr, "Error, could not open properties file to save\n");
-			MPI_Finalize();
-			exit(0);
-	}
-
-	properties_file <<  "# Fecundity imbalance mean:" << std::endl  << fecundity_imbalance_mean <<  std::endl;
-	properties_file <<  "# Growth imbalance mean:" << std::endl  << growth_imbalance_mean <<  std::endl;
-	properties_file <<  "# Fecundity relative intransitivity:" << std::endl  << fecundity_relative_intransitivity <<  std::endl;
-	properties_file <<  "# Growth relative intransitivity:" << std::endl  << growth_relative_intransitivity <<  std::endl;
-	properties_file <<  "# Fecundity-growth cross correlation:" << std::endl  << fecundity_growth_correlation <<  std::endl;
-
-	properties_file.close();
-
-	return;
-
-}
-
 
 int Simulation::getLatticeSize() {
 	return lattice_size;

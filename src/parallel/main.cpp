@@ -81,7 +81,6 @@ int main(int argc, char* argv[]) {
 
 			// central task saves initial state at time 0, including parameters, competition matrices, and initial individual locations
 			sim.saveCompetition();
-			sim.saveProperties();
 			sim.saveLattice(0);
 			sim.resetLattice();
 

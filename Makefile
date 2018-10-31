@@ -1,7 +1,7 @@
 # Options are PARALLEL (with MPI) or SERIES (without MPI)
-TYPE=PARALLEL
+TYPE=SERIES
 # Installation directory
-INSTALLDIR=bin
+INSTALLDIR=/usr/local/bin
  
 ifeq ($(TYPE), PARALLEL)
 	# MPI c++ compiler
