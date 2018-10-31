@@ -20,7 +20,7 @@ int main(int argc, char* argv[]) {
 		exit(0);
 	}
 
-	int i, j, box_size, time_step, max_time_step;
+	int i, j, lattice_size, time_step, max_time_step;
 	
 	// instantiating class Simulation with object sim
 	// requires file name with list of parameters
@@ -29,27 +29,27 @@ int main(int argc, char* argv[]) {
 	// save initial state at time 0, including parameters, competition matrices, and initial positions of individuals
 	sim.saveCompetition();
 	sim.saveProperties();
-	sim.saveBox(0);
+	sim.saveLattice(0);
 
-	box_size = sim.getBoxSize();  // number of cells in one dimension of the box
+	lattice_size = sim.getLatticeSize();  // number of cells in one dimension of the lattice
 	max_time_step = sim.getMaxTimeStep();  // duration of the simulation
 
 	// run simulation
 	for (time_step = 1; time_step < max_time_step + 1; time_step++) {
-		for (i = 0; i < box_size; i++) {
-			for (j = 0;j < box_size; j++) {
+		for (i = 0; i < lattice_size; i++) {
+			for (j = 0;j < lattice_size; j++) {
 				// RNG discards values so that the simulations are repeatable
-				sim.discardRandom(((int64_t) (4 * box_size * box_size * (time_step - 1) + 4 * (j + box_size * i))) - sim.getRandomCount());
-				// update single site in 'next_box' and 'next_dispersal_box'
+				sim.discardRandom(((int64_t) (4 * lattice_size * lattice_size * (time_step - 1) + 4 * (j + lattice_size * i))) - sim.getRandomCount());
+				// update single site in 'next_lattice' and 'next_dispersal_lattice'
 				sim.updateSingleSite(i, j);
 			}
 		}
 		
-		// species and seed locations in 'next_box' and 'next_dispersal_box' are converted to locations in 'box' and 'dispersal_box'
+		// species and seed locations in 'next_lattice' and 'next_dispersal_lattice' are converted to locations in 'lattice' and 'dispersal_lattice'
 		// t + 1 becomes t for the next time step
 		sim.nextToThis();
 		// write species locations to file
-		sim.saveBox(time_step);
+		sim.saveLattice(time_step);
 	}
 	return(0);
 }
