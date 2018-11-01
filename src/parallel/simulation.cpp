@@ -120,7 +120,7 @@ Simulation::Simulation(std::string filename, int p_id) {
 		exit(0);
 	}
 
-	global_random_generator.discard(max_random_count - random_count);
+	discardRandom(max_random_count - random_count);
 	random_count = 0;
 
 }
@@ -129,7 +129,6 @@ Simulation::Simulation(std::string filename, int p_id) {
 void Simulation::initializeRandomSimulation() {
 	/* initializes the simulation lattice with species locations, and draws random variates for species-specific parameters
 	(dispersal, competition, etc.). also checks that parameter values are appropriate. */
-
 
 	// set species specific parameters, potentially random
 	getParameter(delta, num_species, "Delta", 2);
@@ -140,9 +139,7 @@ void Simulation::initializeRandomSimulation() {
 	setRandomParameter(dispersal_probability,  num_species,"DispersalProbability", 2);
 	setRandomParameter(dispersal_length, num_species, "DispersalLength", 4);
 	setRandomParameter(intrinsic_fecundity, num_species, "Fecundity", 4);
-
-	initializeLattice();
-
+	
 	// set competition parameters
 	getParameter(&competition_lower_bound, "CompetitionLower", 0);
 	if (fabs(competition_lower_bound) > 1.) {
@@ -249,6 +246,18 @@ void Simulation::initializeRandomSimulation() {
 	if (fecundity_transitivity_type != 0 || growth_transitivity_type!=0)
 		setCompetitionTransitivity();
 
+	unsigned long long max_random_count = (unsigned long long) 1000. * (4. * num_species * num_species );
+	if (random_count > max_random_count) {
+		if (id == 0)
+			fprintf(stderr, "Error, too many random numbers used to generate competition and parameters.\n");
+			fprintf(stderr, "Probable causes are the parameterization of TNormal distribution or severe competition correlation\n");
+		MPI_Finalize();
+		exit(0);
+	}
+	discardRandom(max_random_count - random_count);
+
+	initializeLattice();
+
 	return;
 
 }
@@ -260,6 +269,17 @@ void Simulation::initializeRedoSimulation() {
 
 	getParameter(delta, num_species, "Delta", 2);
 	loadCompetition();
+
+	unsigned long long max_random_count = (unsigned long long) 1000. * (4. * num_species * num_species );
+	if (random_count > max_random_count) {
+		if (id == 0)
+			fprintf(stderr, "Error, too many random numbers used to generate competition and parameters.\n");
+			fprintf(stderr, "Probable causes are the parameterization of TNormal distribution or severe competition correlation\n");
+		MPI_Finalize();
+		exit(0);
+	}
+	discardRandom(max_random_count - random_count);
+
 	initializeLattice();
 
 	return;
