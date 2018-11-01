@@ -38,9 +38,8 @@ class Simulation {
 		void saveCompetition();
 		void saveDispersal(int time_step);
 		void nextToThis();
-		double getUniformReal(double lower_bound, double upper_bound);
-
-
+		double getRandomUniformReal(double lower_bound, double upper_bound);
+		double getRandomNormal(double mean, double sdev);
 
 	private:
 

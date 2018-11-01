@@ -28,7 +28,7 @@ int main(int argc, char* argv[]) {
 
 	FILE * testfile = fopen("test.dat", "w+");
 	for(i = 0; i< 10000; i++)
-		fprintf(testfile, "%.8f, ", sim.getUniformReal(-1., 0.5));
+		fprintf(testfile, "%.8f, ", sim.getRandomNormal(-1., 0.5));
 	fclose(testfile);
 	exit(0);
 		

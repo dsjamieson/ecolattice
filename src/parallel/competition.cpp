@@ -5,7 +5,7 @@
 	 *
 	 *		methods for the Simulation class. set up random 
 	 *		growth and fecundity competition matrices; 
-     *		manipulate imbalance, transitivity, and correlation;
+	 *		manipulate imbalance, transitivity, and correlation;
  	 *		and calculate properties.
 	 *
 	 ***********************************************************/
@@ -825,9 +825,35 @@ void Simulation::setGrowthCompetitionTransitivity(int * fecundity_hierarchy) {
 }
 
 
-double Simulation::getUniformReal(double lower_bound, double upper_bound) {
+double Simulation::getRandomUniformReal(double lower_bound, double upper_bound) {
 
-	return lower_bound + (upper_bound - lower_bound) * ( (double) getRandom() ) / ( (double) (pow(2,32) - 1) );
+	return lower_bound + (upper_bound - lower_bound) * ( (double) getRandom() ) / ( (double) global_random_generator.max() );
+
+}
+
+double Simulation::getRandomNormal(double mean, double sdev) {
+
+	static bool hasSpare = false;
+	static double spare;
+	double u, v; 
+	double s = 0.;
+
+	if(hasSpare) {
+		hasSpare = false;
+		return mean + sdev * spare;
+	}
+
+	hasSpare = true;
+	while( (s >=1.0) || (s==0) ) {
+		u = ( (double) getRandom() ) / ( (double) global_random_generator.max() ) * 2.0 - 1.0;
+		v = ( (double) getRandom() ) / ( (double) global_random_generator.max() ) * 2.0 - 1.0;
+		s = u * u + v * v;
+	}
+
+	s = sqrt(-2.0 * log(s) / s);
+	spare = v * s;
+
+	return mean + sdev * u * s;
 
 }
 
