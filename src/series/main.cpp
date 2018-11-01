@@ -26,14 +26,6 @@ int main(int argc, char* argv[]) {
 	// requires file name with list of parameters
 	Simulation sim(argv[1], 0);
 
-	FILE * testfile = fopen("test.dat", "w+");
-	for(i = 0; i< 10000; i++)
-		fprintf(testfile, "%.8f, ", sim.getRandomNormal(-0.5, 0.25));
-	fclose(testfile);
-	exit(0);
-		
-
-	
 	lattice_size = sim.getLatticeSize();  // number of cells in one dimension of the lattice
 	start_time = sim.getRestartTime() + 1;
 	max_time_step = sim.getMaxTimeStep();  // duration of the simulation
