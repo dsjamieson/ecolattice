@@ -20,12 +20,10 @@ void Simulation::initializeUniformCompetition(){
 
 	// random draw from Uniform(competition_lower_bound, competition_upper_bound)
 	// separate draws for growth and fecundity competition matrices
-	std::uniform_real_distribution<double> dist(competition_lower_bound, competition_upper_bound);
-
 	for (i = 0; i < num_species ; i++){
 		for (j = 0; j < num_species; j++){
-			competition_fecundity[i][j] = dist(generateRandom());
-			competition_growth[i][j] = dist(generateRandom());
+			competition_fecundity[i][j] = getRandomUniformReal(competition_lower_bound, competition_upper_bound);
+			competition_growth[i][j] = getRandomUniformReal(competition_lower_bound, competition_upper_bound);
 		}
 	}
 	return;
@@ -40,20 +38,18 @@ void Simulation::initializeTNormalCompetition() {
 
 	// random draw from truncated Normal(competition_mean, competition_sdev) with bounds [competition_lower_bound, competition_upper_bound]
 	// separate draws for growth and fecundity competition matrices
-	std::normal_distribution<double> dist(competition_mean, competition_sdev);
-
 	for (i = 0; i < num_species; i++) {
 		for (j = 0; j < num_species; j++) {
 			
 			// rejection sampling to obey bounds
 			while (1) {
-				competition_fecundity[i][j] = dist(generateRandom());
+				competition_fecundity[i][j] = getRandomNormal(competition_mean, competition_sdev);
 				if(competition_lower_bound <= competition_fecundity[i][j] && competition_upper_bound >= competition_fecundity[i][j])
 					break;
 			}
 
 			while (1) {
-				competition_growth[i][j] = dist(generateRandom());
+				competition_growth[i][j] = getRandomNormal(competition_mean, competition_sdev);
 				if (competition_lower_bound <= competition_growth[i][j] && competition_upper_bound >= competition_growth[i][j])
 					break;			
 			}
@@ -70,10 +66,8 @@ void Simulation::initializeUniformCorrelatedCompetition(){
 	this represents a trade-off between growth and reproduction. */
 
 	int i, j;
-	double b, x, y, z, umean;
+	double b, x, y, z;
 
-	umean = (competition_lower_bound + competition_upper_bound) / 2.;  // mean of distribution is midpoint. used for anti-correlation. 
-	std::uniform_real_distribution<double> udist(competition_lower_bound, competition_upper_bound);
 	std::bernoulli_distribution bdist(fabs(competition_correlation));
 
 	// draw three random uniform vectors: x, y, z
@@ -83,9 +77,9 @@ void Simulation::initializeUniformCorrelatedCompetition(){
 		for (i = 0; i < num_species ; i++ ) {
 			for (j = 0; j < num_species; j++ ) {
 				b = (double) bdist(generateRandom());
-				x = udist(generateRandom());
-				y = udist(generateRandom());
-				z = udist(generateRandom());
+				x = getRandomUniformReal(competition_lower_bound, competition_upper_bound);
+				y = getRandomUniformReal(competition_lower_bound, competition_upper_bound);
+				z = getRandomUniformReal(competition_lower_bound, competition_upper_bound);
 
 				if (competition_correlation > 0 ) {
 					competition_fecundity[i][j] = b * x + (1. - b) * y;
@@ -93,7 +87,7 @@ void Simulation::initializeUniformCorrelatedCompetition(){
 				}
 				else {
 					competition_fecundity[i][j] = b * x + (1. - b) * y;
-					competition_growth[i][j] = b * (-x + 2. * umean) + (1. - b) * z;
+					competition_growth[i][j] = b * (-x + 2. * competition_mean) + (1. - b) * z;
 				}
 			}
 		}
@@ -115,10 +109,8 @@ void Simulation::initializeTNormalCorrelatedCompetition(){
 	anticorrelated. this represents a trade-off between growth and reproduction. */
 
 	int i, j;
-	double b, x, y, z, nmean;
+	double b, x, y, z;
 
-	nmean = (competition_lower_bound + competition_upper_bound) / 2.;  // mean of distribution is midpoint. used for anti-correlation. 
-	std::normal_distribution<double> ndist(nmean, competition_sdev);
 	std::bernoulli_distribution bdist(fabs(competition_correlation));
 
 	// draw three random uniform vectors: x, y, z
@@ -131,9 +123,9 @@ void Simulation::initializeTNormalCorrelatedCompetition(){
 				while (1) {
 
 					b = (double) bdist(generateRandom());
-					x = ndist(generateRandom());
-					y = ndist(generateRandom());
-					z = ndist(generateRandom());
+					x = getRandomNormal(competition_mean, competition_sdev);
+					y = getRandomNormal(competition_mean, competition_sdev);
+					z = getRandomNormal(competition_mean, competition_sdev);
 
 					if( competition_correlation > 0 ) {
 						competition_fecundity[i][j] = b * x + (1. - b) * y;
@@ -141,7 +133,7 @@ void Simulation::initializeTNormalCorrelatedCompetition(){
 					}
 					else {
 						competition_fecundity[i][j] = b * x + (1. - b) * y;
-						competition_growth[i][j] = b * (-x + 2. * nmean) + (1. - b) * z;
+						competition_growth[i][j] = b * (-x + 2. * competition_mean) + (1. - b) * z;
 					}
 				
 					// first-level of rejection sampling to obey bounds of truncated normal

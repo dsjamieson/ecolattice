@@ -655,18 +655,15 @@ void Simulation::initializeNormalRandomArray(double *array, double *mean, double
 	this method takes draws from normal distributions defined by the mean and standard deviation arrays. */
 
 	int i;
-	for (i = 0; i < length; i++) {
-		std::normal_distribution<float> ndist(mean[i], sdev[i]);
-		array[i] = fabs(ndist(generateRandom()));
-		ndist.reset();
-	}
+	for (i = 0; i < length; i++)
+		array[i] = fabs(getRandomNormal(mean[i], sdev[i]));
 
 	return;
 
 }
 
 
-void Simulation::setRandomParameter(double* parameter_value, int num_species, std::string parameter_name, int type) {
+void Simulation::setRandomParameter(double *parameter_value, int num_species, std::string parameter_name, int type) {
 	/* some parameters in the data file  are specified as parameters of a normal distribution (e.g., intrinsic fecundity). 
 	this method initializes the mean and standard deviation arrays to be sent to the method 'initializeNormalArray' which 
 	will initialize the actual array of random draws. this method is specific to parameters that are probabilities. */
