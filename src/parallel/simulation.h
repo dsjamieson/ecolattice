@@ -38,6 +38,7 @@ class Simulation {
 		void saveCompetition();
 		void saveDispersal(int time_step);
 		void nextToThis();
+		double getUniformReal(double lower_bound, double upper_bound);
 
 
 
@@ -48,7 +49,7 @@ class Simulation {
 		std::mt19937 global_random_generator;
 		std::string parameter_filename, outfile_base, outfile_dir;
 		int id, num_species, lattice_size, num_steps, max_time_step, restart_time;
-		unsigned long long random_count, max_random_count;
+		unsigned long long random_count;
 		double germination_probability, initial_occupancy;
 		int **lattice, **next_lattice;
 		double ***dispersal_lattice, ***next_dispersal_lattice;
@@ -77,7 +78,7 @@ class Simulation {
 
 		// Allocation and random seed
 		std::mt19937& generateRandom();
-		int getRandom();
+		unsigned int getRandom();
 		void allocSim();
 		void initializeLattice();
 

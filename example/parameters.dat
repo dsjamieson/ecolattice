@@ -1,16 +1,16 @@
-Seeds = 12102 122 13372 124 127 972231	# List of seeds, positive integers	
+Seeds = 1222 122 1337 124 127 97223	# List of seeds, positive integers	
 
 LatticeSize = 20 				# Number of lattice sites along one direction
 Species = 6						# Number of species 
-MaxTimeStep = 10				# Final time step of simulation
+MaxTimeStep = 4				# Final time step of simulation
 InitialOccupancy = 0.5	 		# Fraction of occupied sites at initial time
 GerminationProbability = 0.2	# Probability for germination to occur at a site for any species
-OutfileBase = test 				# Initial string in output filenames
-OutfileDir = test_results		# Directory for output files
-
+OutfileBase = test				# Initial string in output filenames
+OutfileDir = test0			# Directory for output files
 Delta = 1 					# Neighborhood size parameter for each species, must be positive integer
+
 SpeciesOccupancy = 1. 		# Initial fraction of sites occupied by each species, weights
-SpeciesOccupancySdev =
+SpeciesOccupancySdev = 
 JuvenileSurvival = 0.2  	# Bernoulli probability of a juvenile individual of species surviving a time step
 JuvenileSurvivalSdev =
 AdultSurvival = 0.9  		# Bernouli probability of an adult individual of species surviving a time step

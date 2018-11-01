@@ -824,3 +824,11 @@ void Simulation::setGrowthCompetitionTransitivity(int * fecundity_hierarchy) {
 	return;
 }
 
+
+double Simulation::getUniformReal(double lower_bound, double upper_bound) {
+
+	return lower_bound + (upper_bound - lower_bound) * ( (double) getRandom() ) / ( (double) (pow(2,32) - 1) );
+
+}
+
+

@@ -25,6 +25,14 @@ int main(int argc, char* argv[]) {
 	// instantiating class Simulation with object sim
 	// requires file name with list of parameters
 	Simulation sim(argv[1], 0);
+
+	FILE * testfile = fopen("test.dat", "w+");
+	for(i = 0; i< 10000; i++)
+		fprintf(testfile, "%.8f", sim.getUniformReal(-1., 0.5));
+	fclose(testfile);
+	exit(0);
+		
+
 	
 	lattice_size = sim.getLatticeSize();  // number of cells in one dimension of the lattice
 	start_time = sim.getRestartTime() + 1;
@@ -38,9 +46,6 @@ int main(int argc, char* argv[]) {
 
 	// run simulation
 	for (time_step = start_time; time_step < max_time_step + 1; time_step++) {
-
-		if(time_step == 3)
-			fprintf(stdout, "%llu\n", sim.getRandomCount());
 
 		for (i = 0; i < lattice_size; i++) {
 			for (j = 0;j < lattice_size; j++) {

@@ -658,6 +658,7 @@ void Simulation::initializeNormalRandomArray(double *array, double *mean, double
 	for (i = 0; i < length; i++) {
 		std::normal_distribution<float> ndist(mean[i], sdev[i]);
 		array[i] = fabs(ndist(generateRandom()));
+		ndist.reset();
 	}
 
 	return;

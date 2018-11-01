@@ -88,9 +88,7 @@ Simulation::Simulation(std::string filename, int p_id) {
 		}
 	}
 
-
 	// allocate simulation arrays and seed random generator
-	max_random_count = (unsigned long long) 1000. * (4. * num_species * num_species + 5. * lattice_size * lattice_size);  // the maximum number of random draws used by the RNG in this simulation
 	allocSim();
 	getSeeds();
 
@@ -112,9 +110,12 @@ Simulation::Simulation(std::string filename, int p_id) {
 	getDiscreteTransitivity();
 	getFecundityGrowthCorrelation();
 
+	// the maximum number of random draws used by the RNG in this simulation
+	unsigned long long max_random_count = (unsigned long long) 1000. * (4. * num_species * num_species + 5. * lattice_size * lattice_size);
 	if (random_count > max_random_count) {
 		if (id == 0)
-			fprintf(stderr, "Error, too many random numbers used to generate initial conditions. Probable causes are the parameterization of TNormal distribution or severe competition correlation\n");
+			fprintf(stderr, "Error, too many random numbers used to generate initial conditions.\n");
+			fprintf(stderr, "Probable causes are the parameterization of TNormal distribution or severe competition correlation\n");
 		MPI_Finalize();
 		exit(0);
 	}
@@ -129,7 +130,8 @@ void Simulation::initializeRandomSimulation() {
 	/* initializes the simulation lattice with species locations, and draws random variates for species-specific parameters
 	(dispersal, competition, etc.). also checks that parameter values are appropriate. */
 
-	// set species specific parameters
+
+	// set species specific parameters, potentially random
 	getParameter(delta, num_species, "Delta", 2);
 	setRandomParameter(species_occupancy, num_species, "SpeciesOccupancy", 3);
 	setRandomParameter(juvenile_survival_probability, num_species, "JuvenileSurvival", 2);
@@ -261,6 +263,7 @@ void Simulation::initializeRedoSimulation() {
 	initializeLattice();
 
 	return;
+
 }
 
 void Simulation::initializeRestartSimulation() {
@@ -274,6 +277,7 @@ void Simulation::initializeRestartSimulation() {
 	loadLattice();
 
 	return;
+
 }
 
 void Simulation::allocSim() {
@@ -452,7 +456,6 @@ void Simulation::resetNextLattice() {
 
 std::mt19937& Simulation::generateRandom() {
 	/* generate a random seed */
-
 	random_count += 2;
 	return global_random_generator;
 }
@@ -871,7 +874,7 @@ int Simulation::getNextSite(int i, int j) {
 }
 
 
-int Simulation::getRandom() {
+unsigned int Simulation::getRandom() {
 	random_count++;
 	return global_random_generator();
 
