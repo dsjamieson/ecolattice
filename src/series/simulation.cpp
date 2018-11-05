@@ -31,6 +31,8 @@ Simulation::Simulation(std::string filename, int p_id) {
 	min_persistence = 0;
 	parameter_filename = filename;
 
+
+	setRandomSeeds();
 	// checks for any obvious format issues with input parameter file 
 	checkInputFormat();
 
@@ -99,7 +101,7 @@ Simulation::Simulation(std::string filename, int p_id) {
 	}
 	else if (competition_filename.size() != 0) {
 		// run simulation with  pre-defined competition parameters but new initial conditions
-		initializeRedoSimulation();
+		initializeReplicateSimulation();
 	}
 	else {
 		// start a new simulation
@@ -131,7 +133,6 @@ void Simulation::initializeRandomSimulation() {
 	/* initializes the simulation lattice with species locations, and draws random variates for species-specific parameters
 	(dispersal, competition, etc.). also checks that parameter values are appropriate. */
 
-	setRandomSeeds();
 	seedGenerator();
 
 	// set species specific parameters, potentially random
@@ -239,6 +240,7 @@ void Simulation::initializeRandomSimulation() {
 	if (fecundity_transitivity_type != 0 || growth_transitivity_type!=0)
 		setCompetitionTransitivity();
 
+	// Discard after competition/parameters, they use rejection sampling
 	unsigned long long max_random_count = (unsigned long long) 1000. * (4. * num_species * num_species );
 	if (random_count > max_random_count) {
 		if (id == 0)
@@ -254,16 +256,17 @@ void Simulation::initializeRandomSimulation() {
 
 }
 
-void Simulation::initializeRedoSimulation() {
+void Simulation::initializeReplicateSimulation() {
 	/* method used to start a ew simulation with the same random parameters, used for replicates.
 	sses competition matrices, fecundities, occupancies, etc. from file, specified in 
 	"CompetitionFile." */
 
-	setRandomSeeds();
 	seedGenerator();
+
 	getParameter(delta, num_species, "Delta", 2);
 	loadCompetition();
 
+	// Discard after competition/parameters, they use rejection sampling
 	unsigned long long max_random_count = (unsigned long long) 1000. * (4. * num_species * num_species );
 	if (random_count > max_random_count) {
 		if (id == 0)
@@ -315,9 +318,14 @@ void Simulation::reinitializeSimulation(int time_step) {
 		}
 	}
 
-	seedGenerator();
 	random_count = 0;
-	initializeRandomSimulation();
+
+	if( competition_filename.size() == 0 || restart_time != 0 )
+		// New sim, seeds from id = 0
+		initializeRandomSimulation();
+	else if ( restart_time == 0 )
+		// Replicate sim, seeds from id = 0
+		initializeReplicateSimulation();
 
 	// calculate properties of pairwise and community-level interactions
 	getSpeciesAbundance();

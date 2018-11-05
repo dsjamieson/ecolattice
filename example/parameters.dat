@@ -1,13 +1,14 @@
-Seeds = 1222 122 1337 124 127 97223	# List of seeds, positive integers	
-
 LatticeSize = 20 				# Number of lattice sites along one direction
 Species = 6						# Number of species 
-MaxTimeStep = 4				# Final time step of simulation
+MaxTimeStep = 200				# Final time step of simulation
 InitialOccupancy = 0.5	 		# Fraction of occupied sites at initial time
 GerminationProbability = 0.2	# Probability for germination to occur at a site for any species
 OutfileBase = test				# Initial string in output filenames
-OutfileDir = test0			# Directory for output files
-Delta = 1 					# Neighborhood size parameter for each species, must be positive integer
+OutfileDir = test1				# Directory for output files
+Delta = 1 						# Neighborhood size parameter for each species, must be positive integer
+MinPersistence = 4				# Minimum number of extant species before simultion restarts itself
+CompetitionFile =				# Filename for competition used for restart or replicates
+RestartTime = 					# Time step read in to restart a simulation
 
 SpeciesOccupancy = 1. 		# Initial fraction of sites occupied by each species, weights
 SpeciesOccupancySdev = 
@@ -31,7 +32,7 @@ CompetitionMean = -0.5 		# Optional, only for TNormal
 CompetitionSdev = 0.2		# Required for TNormal
 
 # Only one of the following can be set to a non-default value
-CompetitionCorr = 0.1 			# Correlation between fecundity and growth competition, default 0.0
+CompetitionCorr = 0.0 			# Correlation between fecundity and growth competition, default 0.0
 Imbalance = 0.5					# Mean relative difference in strength of competition between pairs, default 0.5 
 FecundityTransitivity = 0.0		# Transitivity type 1 (transitive), -1 (maximal intransitivity), or default 0 (random) 
 GrowthTransitivity = 0.0		# Transitivity type 1 (transitive), -1 (maximal intransitivity), or default 0 (random)

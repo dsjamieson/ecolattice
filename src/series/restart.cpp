@@ -264,7 +264,7 @@ void Simulation::loadSeeds() {
 			if (value.find_first_not_of("0123456789") == std::string::npos) {
 
 				try {
-				seeds[col_num-1] = (unsigned int) stoul(value);
+					seeds[col_num-1] = (unsigned int) stoul(value);
 					}
 				catch (...) {
 					if (id == 0)
@@ -456,7 +456,7 @@ void Simulation::loadCompetition() {
 
 				if (value.find_first_not_of("-0123456789.") == std::string::npos) {
 					try {
-						competition_fecundity[line_num - 16][col_num - 1] = stod(value);
+						competition_fecundity[line_num - 18][col_num - 1] = stod(value);
 					}
 					catch (...) {
 						if (id == 0)
@@ -473,11 +473,13 @@ void Simulation::loadCompetition() {
 		if (line_num == 17 + num_species)
 			break;
 	}
+
 	if (line_num < 17 + num_species) {
 		if (id == 0)
 			fprintf(stderr, "Error, not enough lines from fecundity competition in competition file, given the number of species\n");
 		exit(0);
 	}
+
 	if (getline(competition_file, line)) {
 		line_num++;
 		if (trimString(line).size() != 0) {
@@ -493,6 +495,7 @@ void Simulation::loadCompetition() {
 	}
 
 	while (getline(competition_file, line)) {
+
 		line_num++;
 		col_num = 0;
 

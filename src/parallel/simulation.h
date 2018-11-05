@@ -8,6 +8,7 @@
 #include <cmath>
 #include <mpi.h>
 #include <sys/stat.h>
+#include <chrono>
 #include "simulation.h"
 
 class Simulation {
@@ -75,7 +76,7 @@ class Simulation {
 		double *fecundity_row_sum, *growth_row_sum;
 
 		void initializeRandomSimulation();
-		void initializeRedoSimulation();
+		void initializeReplicateSimulation();
 		void initializeRestartSimulation();
 		void loadSeeds();
 		void loadLattice();

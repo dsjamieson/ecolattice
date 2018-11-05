@@ -46,6 +46,12 @@ int main(int argc, char* argv[]) {
 		start_time = sim.getRestartTime() + 1;
 		min_persistence = sim.getMinPersistence();
 		max_time_step = sim.getMaxTimeStep();  // duration of the simulation
+		species_extant = new int[num_species];
+		if (!species_extant) {
+			fprintf(stderr, "Error, could not allocate memory for species_extant in 'main' function\n");
+			MPI_Finalize();
+			exit(-1);
+		}
 		for ( i = 0; i < num_species; i++)
 			species_extant[i] = 0;
 		persistence = 0;
@@ -88,10 +94,19 @@ int main(int argc, char* argv[]) {
 
 			// central task saves initial state at time 0, including parameters, competition matrices, and initial individual locations
 			if (start_time == 1) {
+
+				for (i = 0; i < 5; i++)
+					buffer[i] = (double) sim.getSeed(i); 	
+
+				for (k = 0; k < total_workers; k++)
+					MPI_Send(buffer, buffer_size, MPI_DOUBLE, k+1, 0, MPI_COMM_WORLD);
+
 				sim.saveCompetition();
 				sim.saveLattice(0);
-				sim.resetLattice();
+
 			}
+
+			sim.resetLattice();
 
 			for (time_step = start_time; time_step < max_time_step + 1; time_step++) {
 
@@ -110,7 +125,7 @@ int main(int argc, char* argv[]) {
 					}
 
 					for (i = 0; i < num_species; i++) {
-						if (buffer[buffer_size - num_species + i] != 0)
+						if (buffer[buffer_size - num_species + i] != 0 )
 							species_extant[i] = 1;
 					}
 
@@ -122,14 +137,15 @@ int main(int argc, char* argv[]) {
 				}
 
 				if (persistence < min_persistence) {
-			
+					fprintf(stdout, "Too many extinctions, restarting\n");
+
 					sim.setRandomSeeds();
 					for (i = 0; i < 5; i++)
 						buffer[i] = (double) sim.getSeed(i); 	
 
 					for (k = 0; k < total_workers; k++)
-						MPI_Send(buffer, buffer_size, MPI_DOUBLE, k+1, -1, MPI_COMM_WORLD);
-					sim.reinitializeSim(time_step);
+						MPI_Send(buffer, buffer_size, MPI_DOUBLE, k+1, 0, MPI_COMM_WORLD);
+					sim.reinitializeSimulation(time_step);
 					sim.saveCompetition();
 					sim.saveLattice(0);
 					sim.resetLattice();
@@ -164,12 +180,23 @@ int main(int argc, char* argv[]) {
 				persistence = 0;
 
 				fprintf(stdout, "done step: %d\n", time_step);
+
 			}
 		}
 
 		// workers
 		// each worker is assigned a certain number of sites at which it will update the species and seed locations in 'next_lattice' and 'next_dispersal_lattice'
 		else if (task_site_number[myid - 1] < lattice_size * lattice_size) {
+
+			if (start_time == 1) {
+
+				MPI_Recv(buffer, buffer_size, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD, &status);
+					for (i = 0; i < 5; i++) 
+						sim.setSeed(i, (unsigned int) buffer[i]);
+					sim.reinitializeSimulation(start_time);
+
+			}
+
 
 			for (time_step = start_time; time_step < max_time_step + 1; time_step++) {
 
@@ -198,10 +225,11 @@ int main(int argc, char* argv[]) {
 
 					// worker updates its copy of buffer with species and seed locations from 'next_lattice' and 'next_dispersal_lattice'
 
-					m = sim.getNextSite(i, j)
+					m = sim.getNextSite(i, j);
 					buffer[j + lattice_size * i] = (double) m;
-					if( m != 0 && species_extant[m - 1] != 0)
-						species_extant[m - 1] = 1;
+					if( m != 0 && species_extant[ abs(m) - 1] == 0) {
+						species_extant[abs(m) - 1] = 1;
+					}
 
 					this_species = abs(sim.getSite(i, j));
 					if (this_species != 0)
@@ -217,8 +245,9 @@ int main(int argc, char* argv[]) {
 					}
 				}
 
-				for (i = 0; i < num_species; i++)
-					buffer[buffer_size - num_species + i] =  species_extant[i];
+				for (i = 0; i < num_species; i++) {
+					buffer[buffer_size - num_species + i] =  (double) species_extant[i];
+				}
 
 				// worker sends partially complete buffer to central task
 				MPI_Send(buffer, buffer_size, MPI_DOUBLE, 0, time_step, MPI_COMM_WORLD);
@@ -226,7 +255,7 @@ int main(int argc, char* argv[]) {
 				// worker receives complete buffer from central task
 				MPI_Recv(buffer, buffer_size, MPI_DOUBLE, 0, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
 
-				if (status.MPI_Tag == -1) {
+				if (status.MPI_TAG == 0) {
 
 					for (i = 0; i < 5; i++) 
 						sim.setSeed(i, (unsigned int) buffer[i]);
@@ -239,9 +268,9 @@ int main(int argc, char* argv[]) {
 					continue;
 		
 				}
-				else if ( status.MPI_Tag != time_step  ) {
+				else if ( status.MPI_TAG != time_step  ) {
 
-					fprintf(stderr, "Error, proc %d received time step %d, should be %d\n", myid, status.MPI_Tag, time_step);
+					fprintf(stderr, "Error, proc %d received time step %d, should be %d\n", myid, status.MPI_TAG, time_step);
 					MPI_Finalize();
 					exit(-1);
 
@@ -269,35 +298,63 @@ int main(int argc, char* argv[]) {
 
 		delete[] buffer;
 		delete[] task_site_number;
+		delete[] species_extant;
+
 
 	}
-
 	// single processor version
 	else {
 
-		int i, j, lattice_size, time_step, max_time_step;
+		int i, j, lattice_size, time_step, start_time, max_time_step;
+		int persistence, min_persistence;
+		
+		// instantiating class Simulation with object sim
+		// requires file name with list of parameters
+		Simulation sim(argv[1], 0);
 
-		Simulation sim(argv[1], myid);
-		// save initial values, including competition matrices, initial species locations
-		sim.saveCompetition();
-		sim.saveProperties();
-		sim.saveLattice(0);
+		lattice_size = sim.getLatticeSize();  // number of cells in one dimension of the lattice
+		start_time = sim.getRestartTime() + 1;
+		max_time_step = sim.getMaxTimeStep();  // duration of the simulation
+		min_persistence = sim.getMinPersistence();
 
-		lattice_size = sim.getLatticeSize();  // length of one dimension of the lattice
-		max_time_step = sim.getMaxTimeStep();  // duration of simulation
+		// save initial state at time 0, including parameters, competition matrices, and initial positions of individuals
+		if (start_time == 1) {
+			sim.saveCompetition();
+			sim.saveLattice(0);
+		}
 
-		for (time_step = 1; time_step < max_time_step + 1; time_step++) {
+		// run simulation
+		for (time_step = start_time; time_step < max_time_step + 1; time_step++) {
+
 			for (i = 0; i < lattice_size; i++) {
-				for (j = 0; j < lattice_size; j++) {
-					// discard values from the RNG so simulation is repeatable
-					sim.discardRandom(((int64_t)  (4 * lattice_size * lattice_size * (time_step - 1) + 4 * (j + lattice_size * i))) - sim.getRandomCount());
-					sim.updateSingleSite(i, j);  // update current site
+				for (j = 0;j < lattice_size; j++) {
+					// RNG discards values so that the simulations are repeatable
+					sim.discardRandom(((unsigned long long) (4 * lattice_size * lattice_size * (time_step - 1) + 4 * (j + lattice_size * i))) - sim.getRandomCount());
+					// update single site in 'next_lattice' and 'next_dispersal_lattice'
+					sim.updateSingleSite(i, j);
 				}
 			}
-			// move to next site
+			
+			persistence = sim.getPersistence();
+		
+			if ( persistence < min_persistence ) {
+				fprintf(stdout, "Too many extinctions, reinitializing\n");
+				sim.setRandomSeeds();
+				sim.reinitializeSimulation(time_step);
+				sim.saveCompetition();
+				sim.saveLattice(0);
+				persistence = 0;
+				time_step = 0;
+				continue;
+
+			}
+			
+			// species and seed locations in 'next_lattice' and 'next_dispersal_lattice' are converted to locations in 'lattice' and 'dispersal_lattice'
+			// t + 1 becomes t for the next time step
 			sim.nextToThis();
-			// save lattice from current time step
+			// write species locations to file
 			sim.saveLattice(time_step);
+
 		}
 
 	}
