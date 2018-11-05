@@ -35,21 +35,26 @@ int main(int argc, char* argv[]) {
 		// requires file name with list of parameters and worker ID number
 		Simulation sim(argv[1], myid);
 
-		int i, j, k, l, m, lattice_size, total_workers, num_species;
-		int start_time, time_step, max_time_step;
+		int i, j, k, l, m, lattice_size, total_workers, num_species, persistence;
+		int start_time, time_step, max_time_step, min_persistence;
 		int this_site, buffer_size, this_species, this_stage;
-		int *task_site_number;
+		int *task_site_number, *species_extant;
 		double *buffer;
 
 		lattice_size = sim.getLatticeSize();  // number of cells in one dimension of the lattice
 		num_species = sim.getSpecies();  // number of species in the simulation
 		start_time = sim.getRestartTime() + 1;
+		min_persistence = sim.getMinPersistence();
 		max_time_step = sim.getMaxTimeStep();  // duration of the simulation
+		for ( i = 0; i < num_species; i++)
+			species_extant[i] = 0;
+		persistence = 0;
+
 
 		// allocate buffer
 		// buffer is an array that stores the lattice grid, with species locations, and the dispersal lattice grid, with seed locations
 		// buffer is used to pass information between central task and workers
-		buffer_size = lattice_size * lattice_size * (1 + num_species); 
+		buffer_size = lattice_size * lattice_size * (1 + num_species) + num_species; 
 		buffer = new double[buffer_size];
 		if (!buffer) {
 			fprintf(stderr, "Error, could not allocate memory for buffer in 'main' function\n");
@@ -103,6 +108,37 @@ int main(int argc, char* argv[]) {
 								sim.addDispersal(i, j, k, buffer[lattice_size * lattice_size + j + i * lattice_size + k * lattice_size * lattice_size]);		
 						}
 					}
+
+					for (i = 0; i < num_species; i++) {
+						if (buffer[buffer_size - num_species + i] != 0)
+							species_extant[i] = 1;
+					}
+
+				}
+
+				for (i = 0; i < num_species; i++) {
+					if (species_extant[i] != 0)
+						persistence++;
+				}
+
+				if (persistence < min_persistence) {
+			
+					sim.setRandomSeeds();
+					for (i = 0; i < 5; i++)
+						buffer[i] = (double) sim.getSeed(i); 	
+
+					for (k = 0; k < total_workers; k++)
+						MPI_Send(buffer, buffer_size, MPI_DOUBLE, k+1, -1, MPI_COMM_WORLD);
+					sim.reinitializeSim(time_step);
+					sim.saveCompetition();
+					sim.saveLattice(0);
+					sim.resetLattice();
+					for ( i = 0; i < num_species; i++)
+						species_extant[i] = 0;
+					persistence = 0;
+					time_step = 0;					
+					continue;
+
 				}
 
 				// central task updates its own buffer to completeness, including all species and seed locations	
@@ -123,6 +159,9 @@ int main(int argc, char* argv[]) {
 				sim.saveLattice(time_step);
 				sim.saveDispersal(time_step);
 				sim.resetLattice();
+				for ( i = 0; i < num_species; i++)
+					species_extant[i] = 0;
+				persistence = 0;
 
 				fprintf(stdout, "done step: %d\n", time_step);
 			}
@@ -158,7 +197,12 @@ int main(int argc, char* argv[]) {
 					j = this_site - i * lattice_size;
 
 					// worker updates its copy of buffer with species and seed locations from 'next_lattice' and 'next_dispersal_lattice'
-					buffer[j + lattice_size * i] = (double) sim.getNextSite(i, j);
+
+					m = sim.getNextSite(i, j)
+					buffer[j + lattice_size * i] = (double) m;
+					if( m != 0 && species_extant[m - 1] != 0)
+						species_extant[m - 1] = 1;
+
 					this_species = abs(sim.getSite(i, j));
 					if (this_species != 0)
 						this_stage = (int) sim.getSite(i, j) / this_species;
@@ -173,11 +217,35 @@ int main(int argc, char* argv[]) {
 					}
 				}
 
+				for (i = 0; i < num_species; i++)
+					buffer[buffer_size - num_species + i] =  species_extant[i];
+
 				// worker sends partially complete buffer to central task
 				MPI_Send(buffer, buffer_size, MPI_DOUBLE, 0, time_step, MPI_COMM_WORLD);
 
 				// worker receives complete buffer from central task
-				MPI_Recv(buffer, buffer_size, MPI_DOUBLE, 0, time_step, MPI_COMM_WORLD, &status);
+				MPI_Recv(buffer, buffer_size, MPI_DOUBLE, 0, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+
+				if (status.MPI_Tag == -1) {
+
+					for (i = 0; i < 5; i++) 
+						sim.setSeed(i, (unsigned int) buffer[i]);
+
+					sim.reinitializeSimulation(time_step);
+					sim.resetNextLattice();
+					for ( i = 0; i < num_species; i++)
+						species_extant[i] = 0;
+					time_step = 0;
+					continue;
+		
+				}
+				else if ( status.MPI_Tag != time_step  ) {
+
+					fprintf(stderr, "Error, proc %d received time step %d, should be %d\n", myid, status.MPI_Tag, time_step);
+					MPI_Finalize();
+					exit(-1);
+
+				}
 
 				// worker updates 'lattice' and 'dispersal_lattice' with information from complete buffer
 				// to be used in the next time step
@@ -193,6 +261,9 @@ int main(int argc, char* argv[]) {
 				}
 				// worker clears 'next_lattice' and 'next_dispersal_lattice', which will be filled for the next time step
 				sim.resetNextLattice();
+				for ( i = 0; i < num_species; i++)
+					species_extant[i] = 0;
+
 			}
 		}
 

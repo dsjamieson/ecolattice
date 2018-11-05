@@ -21,6 +21,7 @@ int main(int argc, char* argv[]) {
 	}
 
 	int i, j, lattice_size, time_step, start_time, max_time_step;
+	int persistence, min_persistence;
 	
 	// instantiating class Simulation with object sim
 	// requires file name with list of parameters
@@ -29,6 +30,7 @@ int main(int argc, char* argv[]) {
 	lattice_size = sim.getLatticeSize();  // number of cells in one dimension of the lattice
 	start_time = sim.getRestartTime() + 1;
 	max_time_step = sim.getMaxTimeStep();  // duration of the simulation
+	min_persistence = sim.getMinPersistence();
 
 	// save initial state at time 0, including parameters, competition matrices, and initial positions of individuals
 	if (start_time == 1) {
@@ -48,6 +50,21 @@ int main(int argc, char* argv[]) {
 			}
 		}
 		
+		persistence = sim.getPersistence();
+	
+		if ( persistence < min_persistence ) {
+			fprintf(stdout, "Too many extinctions, reinitializing\n");
+			sim.setRandomSeeds();
+			sim.reinitializeSimulation(time_step);
+			sim.saveCompetition();
+			sim.saveLattice(0);
+			persistence = 0;
+			time_step = 0;
+			continue;
+
+		}
+		
+
 		// species and seed locations in 'next_lattice' and 'next_dispersal_lattice' are converted to locations in 'lattice' and 'dispersal_lattice'
 		// t + 1 becomes t for the next time step
 		sim.nextToThis();
@@ -55,6 +72,7 @@ int main(int argc, char* argv[]) {
 		sim.saveLattice(time_step);
 		sim.saveDispersal(time_step);
 	}
+
 	return(0);
 }
 

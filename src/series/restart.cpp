@@ -215,6 +215,89 @@ void Simulation::loadDispersal() {
 }
 
 
+void Simulation::loadSeeds() {
+	/* load the growth and fecundity competition matrices as well as other important parameters, from the previous simulation. */
+
+	int i, col_num;
+	std::string line;
+	std::string value;
+
+	std::ifstream competition_file;
+	competition_file.open(competition_filename);
+
+	if (!competition_file.is_open()) {
+			if (id == 0)
+				fprintf(stderr, "Error, could not open competition file to load\n");
+			exit(0);
+	}
+
+	if (getline(competition_file, line)) {
+		if (trimString(line).size() != 0 ) {
+				if (id == 0)
+					fprintf(stderr, "Error, formatting issue, line 1 in competition file is a not comment\n");
+				exit(0);
+		}
+	}
+	else {
+		if (id == 0)
+			fprintf(stderr, "Error, competition file ends before seeds are loaded\n");
+		exit(0);
+	}
+
+	if (getline(competition_file, line)) {
+
+		col_num = 0;
+		std::istringstream values(line);
+
+		while (values >> value) {
+
+			col_num++;
+			if (col_num > 5) {
+				if (id == 0)
+					fprintf(stderr, "Error, competition file must have 5 seeds, too many seeds given\n");
+				exit(0);
+			}
+
+			if(col_num < 5)
+				value = value.substr(0, value.size() - 1);
+
+			if (value.find_first_not_of("0123456789") == std::string::npos) {
+
+				try {
+				seeds[col_num-1] = (unsigned int) stoul(value);
+					}
+				catch (...) {
+					if (id == 0)
+						fprintf(stderr, "Error, could not convert value given for competition file column %d to int\n", col_num);
+					exit(0);
+				}
+			}
+			else {
+				if (id == 0)
+					fprintf(stderr, "Error, invalid competition file value given in column %d, to int\n", col_num);
+				exit(0);
+			}
+
+		}
+
+		if (col_num < 5) {
+			if (id == 0)
+				fprintf(stderr, "Error, competition file must have 5 seeds, too few given\n");
+			exit(0);
+		}
+	}
+	else{
+		if (id == 0)
+			fprintf(stderr, "Error, no seeds in competition file\n");
+		exit(0);
+	}
+
+	return;
+
+}
+
+
+
 void Simulation::loadCompetition() {
 	/* load the growth and fecundity competition matrices as well as other important parameters, from the previous simulation. */
 
@@ -246,12 +329,34 @@ void Simulation::loadCompetition() {
 			exit(0);
 	}
 
+	if (getline(competition_file, line)) {
+		line_num++;
+		if (trimString(line).size() != 0 ) {
+				if (id == 0)
+					fprintf(stderr, "Error, formatting issue, line %d in competition file is a not comment\n", line_num);
+				exit(0);
+		}
+	}
+	else {
+		if (id == 0)
+			fprintf(stderr, "Error, competition file ends before anything is loaded\n");
+		exit(0);
+	}
+
+	if (!getline(competition_file, line)) {
+		if (id == 0)
+			fprintf(stderr, "Error, competition file ends before anything is loaded\n");
+		exit(0);
+	}
+	line_num++;
+
+
 	while (getline(competition_file, line)) {
 		line_num++;
 		col_num = 0;
 		if (trimString(line).size() != 0) {
 				if (id == 0)
-					fprintf(stderr, "Error, formatting issue, line %d in competition file is a not comment\n", line_num);
+					fprintf(stderr, "Error, formatting issue, line %d in competition file is not a comment\n", line_num);
 				exit(0);
 		}
 
@@ -270,14 +375,14 @@ void Simulation::loadCompetition() {
 			}
 
 			if (col_num == 1) {
-				if (value.compare("reset") == 0 && line_num / 2 - 1 < 5) {
-					std::string name(names[ line_num/2 - 1]);
+				if (value.compare("reset") == 0 && line_num < 17) {
+					std::string name(names[ (line_num - 4) / 2 ]);
 					int type = 2;
-					if (line_num == 2)
+					if (line_num == 4)
 						type = 3;
-					if (line_num/2 - 1 > 4)
+					if (line_num > 12)
 						type = 4;
-					setRandomParameter(parameters[line_num / 2 - 1], num_species, name, type);
+					setRandomParameter(parameters[(line_num - 4) / 2], num_species, name, type);
 					break;
 				}
 			}
@@ -288,7 +393,7 @@ void Simulation::loadCompetition() {
 			if (value.find_first_not_of("0123456789.") == std::string::npos) {
 
 				try {
-					parameters[line_num / 2 - 1][col_num - 1] = stod(value);
+					parameters[(line_num - 4) / 2][col_num - 1] = stod(value);
 					}
 				catch (...) {
 					if (id == 0)
@@ -304,12 +409,12 @@ void Simulation::loadCompetition() {
 
 		}
 
-		if (line_num == 14)
+		if (line_num == 16)
 			break;
 
 	}
 
-	if (line_num < 14) {
+	if (line_num < 16) {
 		if (id == 0)
 			fprintf(stderr, "Error, not enough lines from species specific parameters in competition file\n");
 		exit(0);
@@ -365,10 +470,10 @@ void Simulation::loadCompetition() {
 					exit(0);
 				}
 			}
-		if (line_num == 15 + num_species)
+		if (line_num == 17 + num_species)
 			break;
 	}
-	if (line_num < 15 + num_species) {
+	if (line_num < 17 + num_species) {
 		if (id == 0)
 			fprintf(stderr, "Error, not enough lines from fecundity competition in competition file, given the number of species\n");
 		exit(0);
@@ -407,7 +512,7 @@ void Simulation::loadCompetition() {
 				if (value.find_first_not_of("-0123456789.") == std::string::npos) {
 
 						try {
-							competition_growth[line_num - 17 - num_species][col_num - 1] = stod(value);
+							competition_growth[line_num - 19 - num_species][col_num - 1] = stod(value);
 						}
 						catch (...) {
 							if (id == 0)
@@ -421,10 +526,10 @@ void Simulation::loadCompetition() {
 					exit(0);
 				}
 			}
-		if (line_num == 16 + 2 * num_species)
+		if (line_num == 18 + 2 * num_species)
 			break;
 	}
-	if (line_num < 16 + 2 * num_species) {
+	if (line_num < 18 + 2 * num_species) {
 		if (id == 0)
 			fprintf(stderr, "Error, not enough lines from growth competition in competition file, given the number of species\n");
 		exit(0);

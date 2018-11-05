@@ -21,7 +21,7 @@ class Simulation {
 		double getDispersal(int i, int j, int s);
 		double getNextDispersal(int i, int j, int s);
 		int getRestartTime();
-
+		unsigned int getSeed(int i);
 
 		void setSite(int i, int j, int s);
 		void addSite(int i, int j, int s);
@@ -29,6 +29,7 @@ class Simulation {
 		void addDispersal(int i, int j, int s, double t);
 		void resetLattice();
 		void resetNextLattice();
+		void setSeed(int i, unsigned int s);
 
 		void updateSingleSite(int i, int j);
 		void discardRandom(unsigned long long n);
@@ -39,14 +40,19 @@ class Simulation {
 		void nextToThis();
 		double getRandomUniformReal(double lower_bound, double upper_bound);
 		double getRandomNormal(double mean, double sdev);
+		int getPersistence();
+		int getMinPersistence();
+		void setRandomSeeds();
+		void reinitializeSimulation(int time_step);
 
 	private:
 
 		// Lattice, dispersal, and time step parameters
-		int *seeds;
+		unsigned int seeds[5];
+		int *species_abundance;
 		std::mt19937 global_random_generator;
 		std::string parameter_filename, outfile_base, outfile_dir;
-		int id, num_species, lattice_size, num_steps, max_time_step, restart_time;
+		int id, num_species, lattice_size, num_steps, max_time_step, restart_time, min_persistence;
 		unsigned long long random_count;
 		double germination_probability, initial_occupancy;
 		int **lattice, **next_lattice;
@@ -70,6 +76,7 @@ class Simulation {
 		void initializeRandomSimulation();
 		void initializeRedoSimulation();
 		void initializeRestartSimulation();
+		void loadSeeds();
 		void loadLattice();
 		void loadDispersal();
 		void loadCompetition();
@@ -77,13 +84,12 @@ class Simulation {
 		// Allocation and random seed
 		std::mt19937& generateRandom();
 		unsigned int getRandom();
-		void allocSim();
+		void allocSimulation();
 		void initializeLattice();
 
 		// Read input and set random parameters
 		void checkInputFormat();
-		void getSeeds();
-		void seedGenerator(int num_seeds);
+		void seedGenerator();
 		void getParameter(int *value, std::string parameter_name, int essential);
 		void getParameter(double *value, std::string parameter_name, int essential);
 		void getParameter(std::string *value, std::string parameter_name, int essential);
@@ -105,6 +111,7 @@ class Simulation {
 
 		// Competition properties
 		void checkCorrelation();
+		void getSpeciesAbundance();
 		void getFecundityGrowthCorrelation();
 		void getImbalanceMean();
 		void getDiscreteTransitivity();

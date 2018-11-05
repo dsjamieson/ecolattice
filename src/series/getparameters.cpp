@@ -13,13 +13,13 @@
 void Simulation::checkInputFormat() {
 	/* check 'parameters.dat' for all parameters and correct format. can remove commented lines from parameters file, where comments are specified with '#'. */
 
-	const char *names[] = { "Seeds", "LatticeSize", "Subdivision", "Species", "Delta", "MaxTimeStep", "InitialOccupancy",
+	const char *names[] = { "LatticeSize", "Subdivision", "Species", "Delta", "MaxTimeStep", "InitialOccupancy",
 						  "GerminationProbability", "OutfileBase", "OutfileDir", "SpeciesOccupancy", "SpeciesOccupancySdev",
 						  "JuvenileSurvival", "JuvenileSurvivalSdev", "AdultSurvival", "AdultSurvivalSdev", "MaximumCompetition",
 						  "MaximumCompetitionSdev", "DispersalProbability", "DispersalProbabilitySdev", "DispersalLength",
 						  "DispersalLengthSdev", "Fecundity", "FecunditySdev", "CompetitionLower", "CompetitionUpper",
 						  "CompetitionType", "CompetitionMean", "CompetitionSdev", "CompetitionCorr", "Imbalance", "FecundityTransitivity",
-						  "GrowthTransitivity", "RelativeHierarchy", "RestartTime", "CompetitionFile", NULL };
+						  "GrowthTransitivity", "RelativeHierarchy", "RestartTime", "CompetitionFile", "MinPersistence" , NULL };
 
 	int i = 0;
 	int line_num = 0;
@@ -85,98 +85,28 @@ void Simulation::checkInputFormat() {
 }
 
 
-void Simulation::getSeeds() {
-	/* read in seeds from the parameter file, required for RNG. sends the number of seeds to seed generator method. */
+void Simulation::setRandomSeeds() {
 
 	int i;
-	int count = -1;
-	int set = 0;
-
-	std::string parameter_name = "Seeds";
-	std::string line;
-	std::ifstream pfile;
-	std::string compstr;
-	std::string pstring;
-	pfile.open(parameter_filename);
-
-	if (!pfile.is_open()) {
-		if (id == 0)
-			fprintf(stderr, "Parameter file not found\n");
-		exit(0);
-	}
-
-	while (getline(pfile, line)) {
-		compstr = trimStringNoComment(line.substr(0, line.find("=")));
-		if (parameter_name.compare(compstr) == 0) {
-			set++;
-			if (set > 1) {
-				if (id == 0)
-					fprintf(stderr, "Error, multiple lines given for parameter Seeds\n");
-				exit(0);
-			}
-			count = 0;
-			line = trimString(line.substr( line.find("=") + 1, line.length() ));
-			std::istringstream pstrings(line);
-			while (pstrings >> pstring) {
-				count++;
-				pstrings >> std::ws;
-			}
-
-			if (count != 0) {
-				i = 0;
-				seeds = new int[count];
-				if (!seeds) {
-					fprintf(stderr, "Error, unable to allocate memory for seeds\n");
-					exit(-1);
-				}
-				pstrings.clear();
-				pstrings.seekg(0, pstrings.beg);
-				while (pstrings >> pstring) {
-					if (pstring.find_first_not_of("0123456789") == std::string::npos) {
-						seeds[i] = stoi(pstring);
-						i++;
-					}
-					else {
-						if (id == 0)
-							fprintf(stderr, "Error, all seeds must be a positive integer\n");
-						exit(0);
-					}
-					pstrings >> std::ws;
-				}
-			}				
-		}
-	}
-
-
-	if (count == -1) {
-		if (id == 0)
-			fprintf(stderr, "Error, found no parameter Seeds\n");
-		exit(0);
-	}
-
-	if (count == 0) {
-		if (id == 0)
-			fprintf(stderr, "Error, no Seeds given, cannot seed random generator\n");
-		exit(0);
-	}
-
-	seedGenerator(count);
+	std::random_device r;
+	seeds[0] = static_cast<unsigned int>(std::chrono::high_resolution_clock::now().time_since_epoch().count());
+	for (i = 1; i<5; i++)
+		seeds[i] = (unsigned int) r(); 
 
 	return;
+
 }
 
-
-void Simulation::seedGenerator(int num_seeds) {
+void Simulation::seedGenerator() {
 	/* create a random vector of seeds (a seed sequence) given the number of seeds specified in the parameter file. fed to the global RNG. */
 
-    std::seed_seq seq(seeds, seeds + num_seeds);
+    std::seed_seq seq(seeds, seeds+5);
 	std::vector<std::uint32_t> seed_vector(std::mt19937::state_size);
     seq.generate(seed_vector.begin(), seed_vector.end());
 	std::seed_seq seq2(seed_vector.begin(), seed_vector.end());
 	global_random_generator.seed(seq2);
 	return;
 }
-
 
 void Simulation::getParameter(int *value, std::string parameter_name, int essential ) {
 	/* sets value of parameter given the parameter name in parameter file, 'parameter.dat' 

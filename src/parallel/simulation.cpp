@@ -28,6 +28,7 @@ Simulation::Simulation(std::string filename, int p_id) {
 	fecundity_transitivity_type = 0.;
 	growth_transitivity_type = 0.;
 	fecundity_growth_relative_hierarchy = 0.;
+	min_persistence = 0;
 	parameter_filename = filename;
 
 	// checks for any obvious format issues with input parameter file 
@@ -68,7 +69,7 @@ Simulation::Simulation(std::string filename, int p_id) {
 		exit(0);
 	}
 	getParameter(&germination_probability, "GerminationProbability", 1);
-	if (initial_occupancy > 1 || initial_occupancy < 0) {
+	if (germination_probability > 1 || germination_probability < 0) {
 		if (id == 0)
 			fprintf(stderr, "Error, GerminationProbability must be between 0 and 1\n");
 		MPI_Finalize();
@@ -87,10 +88,16 @@ Simulation::Simulation(std::string filename, int p_id) {
 			exit(0);
 		}
 	}
+	getParameter(&min_persistence, "MinPersistence", 0);
+	if (min_persistence > num_species || min_persistence < 0) {
+		if (id == 0)
+			fprintf(stderr, "Error, MinPersistence must be between 0 and Species\n");
+		MPI_Finalize();
+		exit(0);
+	}
 
 	// allocate simulation arrays and seed random generator
-	allocSim();
-	getSeeds();
+	allocSimulation();
 
 	if (restart_time != 0) {
 		// continue a previous failed simulation or extend a previous simulation
@@ -106,6 +113,7 @@ Simulation::Simulation(std::string filename, int p_id) {
 	}
 
 	// calculate properties of pairwise and community-level interactions
+	getSpeciesAbundance();
 	getImbalanceMean();
 	getDiscreteTransitivity();
 	getFecundityGrowthCorrelation();
@@ -129,6 +137,9 @@ Simulation::Simulation(std::string filename, int p_id) {
 void Simulation::initializeRandomSimulation() {
 	/* initializes the simulation lattice with species locations, and draws random variates for species-specific parameters
 	(dispersal, competition, etc.). also checks that parameter values are appropriate. */
+
+	setRandomSeeds();
+	seedGenerator();
 
 	// set species specific parameters, potentially random
 	getParameter(delta, num_species, "Delta", 2);
@@ -267,6 +278,8 @@ void Simulation::initializeRedoSimulation() {
 	sses competition matrices, fecundities, occupancies, etc. from file, specified in 
 	"CompetitionFile." */
 
+	setRandomSeeds();
+	seedGenerator();
 	getParameter(delta, num_species, "Delta", 2);
 	loadCompetition();
 
@@ -291,6 +304,8 @@ void Simulation::initializeRestartSimulation() {
 	continues the simulation from where it left off. this method initializes the lattice, reloads the parameters from
 	the previous simulation, and starts up the RNG for the appropriate time step */
 
+	loadSeeds();
+	seedGenerator();
 	loadDispersal();
 	getParameter(delta, num_species, "Delta", 2);
 	loadCompetition();
@@ -300,16 +315,64 @@ void Simulation::initializeRestartSimulation() {
 
 }
 
-void Simulation::allocSim() {
+void Simulation::reinitializeSimulation(int time_step) {
+
+	int i;
+
+	if (id == 0) {
+		std::string fname;
+			fname = outfile_base+"_competition.csv";
+			remove(fname.c_str());
+		for (i = 0; i < time_step; i++) {
+			fname = outfile_base+"_" + std::to_string(i) + ".csv";
+			remove(fname.c_str());
+		}
+		for (i = 1; i < num_species + 1; i++) { 
+			fname = outfile_base+"_dispersal_s" + std::to_string(i) + "_0.csv";
+			remove(fname.c_str());
+			fname = outfile_base+"_dispersal_s" + std::to_string(i) + "_1.csv";
+			remove(fname.c_str());
+		}
+	}
+
+	seedGenerator();
+	random_count = 0;
+	initializeRandomSimulation();
+
+	// calculate properties of pairwise and community-level interactions
+	getSpeciesAbundance();
+	getImbalanceMean();
+	getDiscreteTransitivity();
+	getFecundityGrowthCorrelation();
+
+	// the maximum number of random draws used by the RNG in this simulation
+	unsigned long long max_random_count = (unsigned long long) 1000. * (4. * num_species * num_species + 5. * lattice_size * lattice_size);
+	if (random_count > max_random_count) {
+		if (id == 0)
+			fprintf(stderr, "Error, too many random numbers used to generate initial conditions.\n");
+			fprintf(stderr, "Probable causes are the parameterization of TNormal distribution or severe competition correlation\n");
+		MPI_Finalize();
+		exit(0);
+	}
+
+	discardRandom(max_random_count - random_count);
+	random_count = 0;
+
+	return;
+
+}
+
+void Simulation::allocSimulation() {
 	/* allocate memory for all arrays used in simulations, including parameter arrays, lattice with species locations, and dispersal lattice with seed locations. */
 
 	int i, j, k;
+	species_abundance = new int[num_species];
 	delta = new int[num_species];
 	juvenile_survival_probability = new double[num_species];
 	adult_survival_probability = new double[num_species];
 	maximum_competition = new double[num_species];
 	dispersal_probability = new double[num_species];
-	if (!delta || !juvenile_survival_probability || !adult_survival_probability || !maximum_competition) {
+	if (!species_abundance || !delta || !juvenile_survival_probability || !adult_survival_probability || !maximum_competition) {
 		fprintf(stderr, "Error, unable to allocate memory for survival or maximum competition arrays\n");
 		MPI_Finalize();
 		exit(-1);
@@ -339,6 +402,7 @@ void Simulation::allocSim() {
 		exit(-1);
 	}
 	for (i = 0; i < num_species ; i++) {
+		species_abundance[i] = 0;
 		delta[i] = 0;
 		juvenile_survival_probability[i] = 0.;
 		adult_survival_probability[i] = 0.;
@@ -439,6 +503,27 @@ void Simulation::initializeLattice() {
 	return;
 }
 
+void Simulation::getSpeciesAbundance() {
+
+	int i, j, s;
+
+	for (i = 0; i < num_species; i++)
+		species_abundance[i] = 0;
+
+	for (i = 0; i < lattice_size; i++) {
+		for (j = 0; j < lattice_size; j++) {
+
+			s = abs(lattice[i][j]);
+			if (s != 0)
+				species_abundance[s - 1]++;
+
+		}
+	}
+
+	return;
+
+}
+
 
 void Simulation::resetLattice() {
 	/* for the current time step, set all elements of the lattice and the dispersal lattice to 0. used in simulation for the first time step (t = 0).  */
@@ -471,6 +556,7 @@ void Simulation::resetNextLattice() {
 			}
 		}
 	}
+
 	return;
 }
 
@@ -522,7 +608,9 @@ void Simulation::updateSingleSite(int i, int j) {
 
 		if (germ_dist(generateRandom())) {
 			std::discrete_distribution<int> species_dist(dispersal_lattice[i][j], dispersal_lattice[i][j] + num_species);
-			next_lattice[i][j] = -abs(species_dist(generateRandom()) + 1);
+			l = abs(species_dist(generateRandom()));
+			next_lattice[i][j] = -(l + 1);
+			species_abundance[l]++;
 		}
 		else {
 			next_lattice[i][j] = 0;
@@ -650,6 +738,7 @@ void Simulation::updateSingleSite(int i, int j) {
 		else {
 			// focal individual dies
 			next_lattice[i][j] = 0;
+			species_abundance[this_species - 1]--;
 		}
 	}
 	// no matter what happened in this site, four random numbers will be discarded (the maximum number of random numbers used in the simulation)
@@ -730,6 +819,14 @@ void Simulation::saveCompetition() {
 			MPI_Finalize();
 			exit(0);
 	}
+
+	competition_file << "# Seeds:" << std::endl;
+	for (i = 0; i < 5; i++) {
+		competition_file << " " << seeds[i];
+		if (i < 4)
+			competition_file << ",";
+	} 
+	competition_file << std::endl;
 
 	competition_file << "# Species Occupancy:" << std::endl;
 	for (i = 0; i < num_species; i++) {
@@ -941,3 +1038,28 @@ void Simulation::discardRandom(unsigned long long n) {
 	random_count+=n;
 }
 
+int Simulation::getPersistence() {
+
+	int i, p = 0;
+
+	for (i = 0; i < num_species; i++) {
+		if (species_abundance[i] != 0)
+			p++;
+	}
+
+	return p;
+
+}
+
+int Simulation::getMinPersistence() {
+	return min_persistence;
+}
+
+unsigned int Simulation::getSeed(int i) {
+	return seeds[i];
+}
+
+void Simulation::setSeed(int i, unsigned int s) {
+	seeds[i] = s;
+	return;
+}
