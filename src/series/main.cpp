@@ -50,8 +50,9 @@ int main(int argc, char* argv[]) {
 			}
 		}
 		
-		persistence = sim.getPersistence();
-	
+		persistence = sim.getPersistence();  // get the number of species currently coexisting in the lattice
+		
+		// if persistence is below the minimum allowed persistence, new random seeds are drawn and the simulation is reinitialized. the new initial state of the simulation is save
 		if ( persistence < min_persistence ) {
 			fprintf(stdout, "Too many extinctions, reinitializing\n");
 			sim.setRandomSeeds();
@@ -61,18 +62,17 @@ int main(int argc, char* argv[]) {
 			persistence = 0;
 			time_step = 0;
 			continue;
-
 		}
 		
-
 		// species and seed locations in 'next_lattice' and 'next_dispersal_lattice' are converted to locations in 'lattice' and 'dispersal_lattice'
 		// t + 1 becomes t for the next time step
 		sim.nextToThis();
 		// write species locations to file
 		sim.saveLattice(time_step);
 		sim.saveDispersal(time_step);
-	}
 
+		fprintf(stdout, "done step %d\n", time_step);
+	}
 	return(0);
 }
 

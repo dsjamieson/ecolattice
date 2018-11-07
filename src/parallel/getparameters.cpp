@@ -13,13 +13,13 @@
 void Simulation::checkInputFormat() {
 	/* check 'parameters.dat' for all parameters and correct format. can remove commented lines from parameters file, where comments are specified with '#'. */
 
-	const char *names[] = { "LatticeSize", "Subdivision", "Species", "Delta", "MaxTimeStep", "InitialOccupancy",
+	const char *names[] = {"LatticeSize", "Subdivision", "Species", "Delta", "MaxTimeStep", "InitialOccupancy",
 						  "GerminationProbability", "OutfileBase", "OutfileDir", "SpeciesOccupancy", "SpeciesOccupancySdev",
 						  "JuvenileSurvival", "JuvenileSurvivalSdev", "AdultSurvival", "AdultSurvivalSdev", "MaximumCompetition",
 						  "MaximumCompetitionSdev", "DispersalProbability", "DispersalProbabilitySdev", "DispersalLength",
 						  "DispersalLengthSdev", "Fecundity", "FecunditySdev", "CompetitionLower", "CompetitionUpper",
 						  "CompetitionType", "CompetitionMean", "CompetitionSdev", "CompetitionCorr", "Imbalance", "FecundityTransitivity",
-						  "GrowthTransitivity", "RelativeHierarchy", "RestartTime", "CompetitionFile", "MinPersistence" , NULL };
+						  "GrowthTransitivity", "RelativeHierarchy", "RestartTime", "CompetitionFile", "MinPersistence" , NULL};
 
 	int i = 0;
 	int line_num = 0;
@@ -91,21 +91,23 @@ void Simulation::checkInputFormat() {
 
 
 void Simulation::setRandomSeeds() {
+	/* draw random seeds from random device (5) and system clock (1). system clock used for systems 
+	that do not have random device capability. */
 
 	int i;
 	std::random_device r;
 	seeds[0] = static_cast<unsigned int>(std::chrono::high_resolution_clock::now().time_since_epoch().count());
-	for (i = 1; i<5; i++)
+	for (i = 1; i < 5; i++)
 		seeds[i] = (unsigned int) r(); 
 
 	return;
-
 }
 
 void Simulation::seedGenerator() {
-	/* create a random vector of seeds (a seed sequence) given the number of seeds specified in the parameter file. fed to the global RNG. */
+	/* create a random vector of seeds (a seed sequence) given the seeds specified randomly or in
+	the parameter file (restart simulation). seeds fed to the global RNG. */
 
-    std::seed_seq seq(seeds, seeds+5);
+    std::seed_seq seq(seeds, seeds + 5);
 	std::vector<std::uint32_t> seed_vector(std::mt19937::state_size);
     seq.generate(seed_vector.begin(), seed_vector.end());
 	std::seed_seq seq2(seed_vector.begin(), seed_vector.end());
@@ -147,7 +149,7 @@ void Simulation::getParameter(int *value, std::string parameter_name, int essent
 			std::istringstream pstrings(line);
 			if (pstrings >> value_string) {
 				if (value_string.find_first_not_of("0123456789") == std::string::npos) {
-					*value = stoi(value_string) ;
+					*value = stoi(value_string);
 					set = 1;
 				}
 				else {
@@ -156,14 +158,12 @@ void Simulation::getParameter(int *value, std::string parameter_name, int essent
 					MPI_Finalize();
 					exit(0);
 				}
-
 				if (pstrings >> value_string) {
 					if (id == 0)
 						fprintf(stderr, "Error, multiple values given for parameter %s\n", parameter_name.c_str());
 					MPI_Finalize();
 					exit(0);
 				}
-
 			}
 			else {
 				if (essential == 1) {

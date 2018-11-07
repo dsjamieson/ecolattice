@@ -31,12 +31,12 @@ Simulation::Simulation(std::string filename, int p_id) {
 	min_persistence = 0;
 	parameter_filename = filename;
 
-
+	// draw random seeds used in simulation
 	setRandomSeeds();
 	// checks for any obvious format issues with input parameter file 
 	checkInputFormat();
 
-	// checks if this simulation is a continuation of  a previous simulation given time step (parameter: restart_time)
+	// checks if this simulation is a continuation of a previous simulation given time step (parameter: restart_time)
 	getParameter(&restart_time, "RestartTime", 0);
 	if (restart_time < 0) {
 		if (id == 0)
@@ -44,6 +44,8 @@ Simulation::Simulation(std::string filename, int p_id) {
 		exit(0);
 	}
 
+	// if a competition file is provided, simulation will run as a replicate, with the same random parameters but new matrix initiation and Monte Carlo dynamics
+	// if simulation is a restart, there must be a competition file provided
 	if (restart_time != 0) {
 		getParameter(&competition_filename, "CompetitionFile", 1);
 	}
@@ -59,7 +61,6 @@ Simulation::Simulation(std::string filename, int p_id) {
 		exit(0);
 	}
 	getParameter(&num_species, "Species", 1);
-
 	getParameter(&max_time_step, "MaxTimeStep", 1);
 	getParameter(&initial_occupancy, "InitialOccupancy", 1);
 	if (initial_occupancy > 1 || initial_occupancy < 0) {
@@ -92,15 +93,15 @@ Simulation::Simulation(std::string filename, int p_id) {
 		exit(0);
 	}
 
-	// allocate simulation arrays and seed random generator
+	// allocate simulation arrays
 	allocSimulation();
 
 	if (restart_time != 0) {
-		// continue a previous failed simulation or extend a previous simulation
+		// continue a previous failed simulation or extend a previous simulation (repeat simulation)
 		initializeRestartSimulation();
 	}
 	else if (competition_filename.size() != 0) {
-		// run simulation with  pre-defined competition parameters but new initial conditions
+		// run simulation with pre-defined competition parameters but new initial conditions (replicate simulation)
 		initializeReplicateSimulation();
 	}
 	else {
@@ -114,7 +115,7 @@ Simulation::Simulation(std::string filename, int p_id) {
 	getDiscreteTransitivity();
 	getFecundityGrowthCorrelation();
 
-	// the maximum number of random draws used by the RNG in this simulation
+	// RNG is set to jump ahead to the maximum number of random draws that could have already been used by the RNG when initializing the simulation
 	unsigned long long max_random_count = (unsigned long long) 1000. * (4. * num_species * num_species + 5. * lattice_size * lattice_size);
 	if (random_count > max_random_count) {
 		if (id == 0)
@@ -122,10 +123,8 @@ Simulation::Simulation(std::string filename, int p_id) {
 			fprintf(stderr, "Probable causes are the parameterization of TNormal distribution or severe competition correlation\n");
 		exit(0);
 	}
-
 	discardRandom(max_random_count - random_count);
-	random_count = 0;
-
+	random_count = 0;  // reset random count before simulation begins
 }
 
 
@@ -133,6 +132,7 @@ void Simulation::initializeRandomSimulation() {
 	/* initializes the simulation lattice with species locations, and draws random variates for species-specific parameters
 	(dispersal, competition, etc.). also checks that parameter values are appropriate. */
 
+	// send random seeds to RNG
 	seedGenerator();
 
 	// set species specific parameters, potentially random
@@ -146,6 +146,7 @@ void Simulation::initializeRandomSimulation() {
 	setRandomParameter(intrinsic_fecundity, num_species, "Fecundity", 4);
 	
 	// set competition parameters
+	// competition lower and upper bound
 	getParameter(&competition_lower_bound, "CompetitionLower", 0);
 	if (fabs(competition_lower_bound) > 1.) {
 		if (id == 0)
@@ -159,7 +160,7 @@ void Simulation::initializeRandomSimulation() {
 		exit(0);
 	}
 	competition_mean = (competition_lower_bound + competition_upper_bound) / 2.;
-
+	// competition type (uniform, truncated normal), mean, and std. deviation
 	getParameter(&competition_type, "CompetitionType", 0);
 	if (competition_type.compare("TNormal") == 0) {
 		getParameter(&competition_mean, "CompetitionMean", 0);
@@ -170,18 +171,23 @@ void Simulation::initializeRandomSimulation() {
 		}
 		getParameter(&competition_sdev, "CompetitionSdev", 1);
 	}
+	// optional competition structural features
+	// correlation between growth and fecundity competition
 	getParameter(&competition_correlation, "CompetitionCorr", 0);
 	if (fabs(competition_correlation) > 1.) {
 		if (id == 0)
 			fprintf(stderr, "Error, CompetitionCorr must be between -1 and 1\n");
 		exit(0);
 	}
+	// imbalance between species pairs in competition matrices
 	getParameter(&imbalance, "Imbalance", 0);
 	if (imbalance < 0 || imbalance > 1) {
 		if (id == 0)
 			fprintf(stderr, "Error, Imbalance must be between 0 and 1\n");
 		exit(0);
 	}
+	// transitivity of matrices, 0 = random, 1 = max. transitivity, -1 = max intransitivity
+	// relative hierarchy between fecundity/growth competition, +/-1 = equal/inverted, 0 = random 
 	getParameter(&fecundity_transitivity_type, "FecundityTransitivity", 0);
 	if (fabs(fecundity_transitivity_type) != 1. && fecundity_transitivity_type != 0.) {
 		if (id == 0)
@@ -197,7 +203,7 @@ void Simulation::initializeRandomSimulation() {
 	getParameter(&fecundity_growth_relative_hierarchy, "RelativeHierarchy", 0);
 	if (fabs(fecundity_growth_relative_hierarchy) != 1. && fecundity_growth_relative_hierarchy != 0.) {
 		if (id == 0)
-			fprintf(stderr, "Error, RelativeHierarchy must be +/-1 (equal/uninverted), or 0 (unrelated)\n");
+			fprintf(stderr, "Error, RelativeHierarchy must be +/-1 (equal/inverted), or 0 (unrelated)\n");
 		exit(0);
 	}
 	if (fecundity_growth_relative_hierarchy != 0 && (fecundity_transitivity_type == 0 || growth_transitivity_type == 0)) {
@@ -240,7 +246,7 @@ void Simulation::initializeRandomSimulation() {
 	if (fecundity_transitivity_type != 0 || growth_transitivity_type!=0)
 		setCompetitionTransitivity();
 
-	// Discard after competition/parameters, they use rejection sampling
+	// RNG discard after drawing random parameters, as some use rejection sampling
 	unsigned long long max_random_count = (unsigned long long) 1000. * (4. * num_species * num_species );
 	if (random_count > max_random_count) {
 		if (id == 0)
@@ -253,20 +259,21 @@ void Simulation::initializeRandomSimulation() {
 	initializeLattice();
 
 	return;
-
 }
 
 void Simulation::initializeReplicateSimulation() {
-	/* method used to start a ew simulation with the same random parameters, used for replicates.
-	sses competition matrices, fecundities, occupancies, etc. from file, specified in 
+	/* method used to start a new simulation with the same random parameters, used for replicates.
+	uses competition matrices, fecundities, occupancies, etc. from file, specified in 
 	"CompetitionFile." */
 
+	// send seeds to RNG
 	seedGenerator();
 
+	// read in Delta from parameter file and all other parameters from competition file
 	getParameter(delta, num_species, "Delta", 2);
 	loadCompetition();
 
-	// Discard after competition/parameters, they use rejection sampling
+	// RNG discard after loading random parameters, as some used rejection sampling
 	unsigned long long max_random_count = (unsigned long long) 1000. * (4. * num_species * num_species );
 	if (random_count > max_random_count) {
 		if (id == 0)
@@ -279,7 +286,6 @@ void Simulation::initializeReplicateSimulation() {
 	initializeLattice();
 
 	return;
-
 }
 
 void Simulation::initializeRestartSimulation() {
@@ -287,44 +293,49 @@ void Simulation::initializeRestartSimulation() {
 	continues the simulation from where it left off. this method initializes the lattice, reloads the parameters from
 	the previous simulation, and starts up the RNG for the appropriate time step */
 
+	// load seeds from competition file and sends to RNG
 	loadSeeds();
 	seedGenerator();
+	// load dispersal from file
 	loadDispersal();
+	// read in Delta from parameter file and all other parameters from competition file
 	getParameter(delta, num_species, "Delta", 2);
 	loadCompetition();
 	loadLattice();
 
 	return;
-
 }
 
 void Simulation::reinitializeSimulation(int time_step) {
+	/* method used for two purposes: 1) to reinitialize worker copies of the simulation given the random seeds drawn
+	by the central task, and 2) to reinitialize the simulation after the number of species drops below the minimum persistence.
+	method deletes already written output files (only for purpose 2) */
 
 	int i;
 
+	// delete previously written output files if simulation is being reinitialized after persistence is too low
 	if (id == 0) {
 		std::string fname;
-			fname = outfile_base+"_competition.csv";
+			fname = outfile_base + "_competition.csv";
 			remove(fname.c_str());
 		for (i = 0; i < time_step; i++) {
 			fname = outfile_base+"_" + std::to_string(i) + ".csv";
 			remove(fname.c_str());
 		}
 		for (i = 1; i < num_species + 1; i++) { 
-			fname = outfile_base+"_dispersal_s" + std::to_string(i) + "_0.csv";
+			fname = outfile_base + "_dispersal_s" + std::to_string(i) + "_0.csv";
 			remove(fname.c_str());
-			fname = outfile_base+"_dispersal_s" + std::to_string(i) + "_1.csv";
+			fname = outfile_base + "_dispersal_s" + std::to_string(i) + "_1.csv";
 			remove(fname.c_str());
 		}
 	}
-
 	random_count = 0;
 
-	if( competition_filename.size() == 0 || restart_time != 0 )
-		// New sim, seeds from id = 0
+	if (competition_filename.size() == 0 || restart_time != 0)
+		// new simulation, seeds from id = 0
 		initializeRandomSimulation();
-	else if ( restart_time == 0 )
-		// Replicate sim, seeds from id = 0
+	else if (restart_time == 0)
+		// replicate simulation, seeds from id = 0
 		initializeReplicateSimulation();
 
 	// calculate properties of pairwise and community-level interactions
@@ -333,7 +344,7 @@ void Simulation::reinitializeSimulation(int time_step) {
 	getDiscreteTransitivity();
 	getFecundityGrowthCorrelation();
 
-	// the maximum number of random draws used by the RNG in this simulation
+	// RNG is set to jump ahead to the maximum number of random draws that could have already been used by the RNG when initializing the simulation
 	unsigned long long max_random_count = (unsigned long long) 1000. * (4. * num_species * num_species + 5. * lattice_size * lattice_size);
 	if (random_count > max_random_count) {
 		if (id == 0)
@@ -346,7 +357,6 @@ void Simulation::reinitializeSimulation(int time_step) {
 	random_count = 0;
 
 	return;
-
 }
 
 void Simulation::allocSimulation() {
@@ -415,7 +425,6 @@ void Simulation::allocSimulation() {
 			competition_fecundity[i][j] = 0.;
 			competition_growth[i][j] = 0.;
 		}
-
 	}
 
 	lattice = new int *[lattice_size];
@@ -450,9 +459,7 @@ void Simulation::allocSimulation() {
 			}
 		}
 	}
-
 	return;
-
 }
 
 
@@ -477,11 +484,11 @@ void Simulation::initializeLattice() {
 			}
 		}
 	}
-
 	return;
 }
 
 void Simulation::getSpeciesAbundance() {
+	/* calculate the number of individuals of each species in the lattice. */
 
 	int i, j, s;
 
@@ -490,21 +497,18 @@ void Simulation::getSpeciesAbundance() {
 
 	for (i = 0; i < lattice_size; i++) {
 		for (j = 0; j < lattice_size; j++) {
-
 			s = abs(lattice[i][j]);
 			if (s != 0)
 				species_abundance[s - 1]++;
-
 		}
 	}
-
 	return;
-
 }
 
 
 void Simulation::resetLattice() {
-	/* for the current time step, set all elements of the lattice and the dispersal lattice to 0. used in simulation for the first time step (t = 0).  */
+	/* for the current time step, set all elements of the lattice and the dispersal lattice to 0. used in simulation for the first time step (t = 0). */
+
 	int i, j, k;
 
 	for (i = 0; i < lattice_size; i++) {
@@ -515,7 +519,6 @@ void Simulation::resetLattice() {
 			}
 		}
 	}
-
 	return;
 }
 
@@ -534,15 +537,25 @@ void Simulation::resetNextLattice() {
 			}
 		}
 	}
-
 	return;
 }
 
+
 std::mt19937& Simulation::generateRandom() {
-	/* generate a random seed */
+	/* add to the random count and get a random draw from the global RNG. */
+
 	random_count += 2;
 	return global_random_generator;
 }
+
+
+void Simulation::discardRandom(unsigned long long n) {
+	/* add to the random count and discard values from the global RNG. */
+
+	global_random_generator.discard(n);
+	random_count += n;
+}
+
 
 
 void Simulation::updateSingleSite(int i, int j) {
@@ -938,6 +951,9 @@ void Simulation::saveCompetition() {
 
 }
 
+/* methods used to "get" and "set" values inside the main function. "get" refers to returning values
+from the simulation object. "set" refers to changing values within the simulation given values in main. */
+
 int Simulation::getLatticeSize() {
 	return lattice_size;
 }
@@ -1005,10 +1021,6 @@ void Simulation::addDispersal(int i, int j, int s, double t) {
 	return;
 }
 
-void Simulation::discardRandom(unsigned long long n) {
-	global_random_generator.discard(n);
-	random_count+=n;
-}
 
 int Simulation::getPersistence() {
 
@@ -1018,9 +1030,7 @@ int Simulation::getPersistence() {
 		if (species_abundance[i] != 0)
 			p++;
 	}
-
 	return p;
-
 }
 
 int Simulation::getMinPersistence() {

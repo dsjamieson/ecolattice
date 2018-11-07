@@ -47,7 +47,6 @@ void Simulation::saveDispersal(int time_step) {
 	}
 
 	return;
-
 }
 
 
@@ -128,7 +127,7 @@ void Simulation::loadLattice() {
 
 
 void Simulation::loadDispersal() {
-	/* load the dispersal lattice, or the seed locations, from the previous simulation. (simulation reloaded based on
+	/* load the dispersal lattice, or the seed locations, from the previous simulation. simulation reloaded based on
 	"RestartTime." */
 
 	int i, j, k, col_num;
@@ -211,12 +210,12 @@ void Simulation::loadDispersal() {
 	}
 
 	return;
-
 }
 
 
 void Simulation::loadSeeds() {
-	/* load the growth and fecundity competition matrices as well as other important parameters, from the previous simulation. */
+	/* if simulation in restarted, then the seeds from the previous simulation are read in from the competition file,
+	in the format, "OutfileBase_competition.csv" */
 
 	int i, col_num;
 	std::string line;
@@ -258,13 +257,13 @@ void Simulation::loadSeeds() {
 				exit(0);
 			}
 
-			if(col_num < 5)
+			if (col_num < 5)
 				value = value.substr(0, value.size() - 1);
 
 			if (value.find_first_not_of("0123456789") == std::string::npos) {
 
 				try {
-					seeds[col_num-1] = (unsigned int) stoul(value);
+					seeds[col_num - 1] = (unsigned int) stoul(value);
 					}
 				catch (...) {
 					if (id == 0)
@@ -291,15 +290,15 @@ void Simulation::loadSeeds() {
 			fprintf(stderr, "Error, no seeds in competition file\n");
 		exit(0);
 	}
-
 	return;
-
 }
 
 
 
 void Simulation::loadCompetition() {
-	/* load the growth and fecundity competition matrices as well as other important parameters, from the previous simulation. */
+	/* load the growth and fecundity competition matrices as well as parameters, including species occupancy,
+	survival, and dispersal, from the previous simulation. written specifically to work with the way the 
+	competition file output is formatted. */
 
 	int i, j, col_num;
 	int line_num = 0;
@@ -307,8 +306,8 @@ void Simulation::loadCompetition() {
 	std::string value;
 	std::string name;
 
-	const char *names[] = { "SpeciesOccupancy", "JuvenileSurvival",  "AdultSurvival",  "MaximumCompetition",
-						     "DispersalProbability", "DispersalLength", "Fecundity" };
+	const char *names[] = {"SpeciesOccupancy", "JuvenileSurvival",  "AdultSurvival",  "MaximumCompetition",
+						     "DispersalProbability", "DispersalLength", "Fecundity"};
 
 	double **parameters = new double*[7];
 
@@ -544,9 +543,7 @@ void Simulation::loadCompetition() {
 	competition_file.close();
 
 	return;
-
 }
-
 
 
 int Simulation::getRestartTime() {
