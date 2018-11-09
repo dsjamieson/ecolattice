@@ -290,6 +290,7 @@ void Simulation::loadSeeds() {
 			fprintf(stderr, "Error, no seeds in competition file\n");
 		exit(0);
 	}
+	competition_file.close();
 	return;
 }
 

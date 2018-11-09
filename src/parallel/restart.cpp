@@ -314,6 +314,7 @@ void Simulation::loadSeeds() {
 		MPI_Finalize();
 		exit(0);
 	}
+	competition_file.close();
 	return;
 }
 
