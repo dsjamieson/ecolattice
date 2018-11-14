@@ -81,6 +81,8 @@ void Simulation::checkInputFormat() {
 		}
 	}
 
+	pfile.close();
+
 	return;
 }
 
@@ -171,6 +173,7 @@ void Simulation::getParameter(int *value, std::string parameter_name, int essent
 			fprintf(stderr, "Found no parameter %s\n", parameter_name.c_str());
 		exit(0);
 	}
+	pfile.close();
 	return;
 }
 
@@ -245,6 +248,7 @@ void Simulation::getParameter(double *value, std::string parameter_name, int ess
 		exit(0);
 	}
 
+	pfile.close();
 	return;
 
 }
@@ -299,7 +303,7 @@ void Simulation::getParameter(std::string *value, std::string parameter_name, in
 			fprintf(stderr, "Found no parameter %s\n", parameter_name.c_str());
 		exit(0);
 	}
-
+	pfile.close();
 	return;
 
 }
@@ -399,7 +403,7 @@ void Simulation::getParameter(int *value_array, int n, std::string parameter_nam
 			fprintf(stderr, "Found no parameter %s\n", parameter_name.c_str());
 		exit(0);
 	}
-
+	pfile.close();
 	return;
 }
 
@@ -524,7 +528,7 @@ void Simulation::getParameter(double *value_array, int n, std::string parameter_
 			fprintf(stderr, "Found no parameter %s\n", parameter_name.c_str());
 		exit(0);
 	}
-
+	pfile.close();
 	return;
 }
 

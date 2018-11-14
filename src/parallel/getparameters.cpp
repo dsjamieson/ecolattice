@@ -86,6 +86,8 @@ void Simulation::checkInputFormat() {
 		}
 	}
 
+	pfile.close();
+
 	return;
 }
 
@@ -182,6 +184,7 @@ void Simulation::getParameter(int *value, std::string parameter_name, int essent
 		MPI_Finalize();
 		exit(0);
 	}
+	pfile.close();
 	return;
 }
 
@@ -263,6 +266,7 @@ void Simulation::getParameter(double *value, std::string parameter_name, int ess
 		exit(0);
 	}
 
+	pfile.close();
 	return;
 
 }
@@ -322,7 +326,7 @@ void Simulation::getParameter(std::string *value, std::string parameter_name, in
 		MPI_Finalize();
 		exit(0);
 	}
-
+	pfile.close();
 	return;
 
 }
@@ -431,7 +435,7 @@ void Simulation::getParameter(int *value_array, int n, std::string parameter_nam
 		MPI_Finalize();
 		exit(0);
 	}
-
+	pfile.close();
 	return;
 }
 
@@ -568,7 +572,7 @@ void Simulation::getParameter(double *value_array, int n, std::string parameter_
 		MPI_Finalize();
 		exit(0);
 	}
-
+	pfile.close();
 	return;
 }
 
