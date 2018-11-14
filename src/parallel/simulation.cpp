@@ -29,6 +29,7 @@ Simulation::Simulation(std::string filename, int p_id) {
 	growth_transitivity_type = 0.;
 	fecundity_growth_relative_hierarchy = 0.;
 	min_persistence = 0;
+	num_restarts = 0;
 	parameter_filename = filename;
 
 	// draw random seeds used in simulation
@@ -348,6 +349,7 @@ void Simulation::reinitializeSimulation(int time_step) {
 			fname = outfile_base + "_dispersal_s" + std::to_string(i) + "_1.csv";
 			remove(fname.c_str());
 		}
+		num_restarts++;
 	}
 	random_count = 0;
 
@@ -980,7 +982,8 @@ void Simulation::saveCompetition() {
 	competition_file <<  "# Fecundity relative intransitivity:" << std::endl  << fecundity_relative_intransitivity <<  std::endl;
 	competition_file <<  "# Growth relative intransitivity:" << std::endl  << growth_relative_intransitivity <<  std::endl;
 	competition_file <<  "# Fecundity-growth cross correlation:" << std::endl  << fecundity_growth_correlation <<  std::endl;
-
+	competition_file <<  "# Number of restarts:" << std::endl  << num_restarts <<  std::endl;
+	
 	competition_file.close();
 
 	return;

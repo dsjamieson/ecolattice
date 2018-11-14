@@ -54,7 +54,7 @@ class Simulation {
 		int *species_abundance;
 		std::mt19937 global_random_generator;
 		std::string parameter_filename, outfile_base, outfile_dir;
-		int id, num_species, lattice_size, num_steps, max_time_step, restart_time, min_persistence;
+		int id, num_species, lattice_size, num_steps, max_time_step, restart_time, min_persistence, num_restarts;
 		unsigned long long random_count;
 		double germination_probability, initial_occupancy;
 		int **lattice, **next_lattice;
