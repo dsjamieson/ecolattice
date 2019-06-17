@@ -22,8 +22,14 @@ void Simulation::initializeUniformCompetition(){
 	// separate draws for growth and fecundity competition matrices
 	for (i = 0; i < num_species ; i++){
 		for (j = 0; j < num_species; j++){
+			if (i == j) {
+			competition_fecundity[i][j] = getRandomUniformReal(competition_diag_lower_bound, competition_diag_upper_bound);
+			competition_growth[i][j] = getRandomUniformReal(competition_diag_lower_bound, competition_diag_upper_bound);
+			}
+			else {
 			competition_fecundity[i][j] = getRandomUniformReal(competition_lower_bound, competition_upper_bound);
 			competition_growth[i][j] = getRandomUniformReal(competition_lower_bound, competition_upper_bound);
+			}
 		}
 	}
 	return;
@@ -43,13 +49,23 @@ void Simulation::initializeTNormalCompetition() {
 			
 			// rejection sampling to obey bounds
 			while (1) {
+				if (i == j) {
+				competition_fecundity[i][j] = getRandomNormal(competition_diag_mean, competition_diag_sdev);
+				}
+				else {
 				competition_fecundity[i][j] = getRandomNormal(competition_mean, competition_sdev);
+				}
 				if(competition_lower_bound <= competition_fecundity[i][j] && competition_upper_bound >= competition_fecundity[i][j])
 					break;
 			}
 
 			while (1) {
+				if (i == j) {
+				competition_growth[i][j] = getRandomNormal(competition_diag_mean, competition_diag_sdev);
+				}
+				else {
 				competition_growth[i][j] = getRandomNormal(competition_mean, competition_sdev);
+				}
 				if (competition_lower_bound <= competition_growth[i][j] && competition_upper_bound >= competition_growth[i][j])
 					break;			
 			}
@@ -77,10 +93,16 @@ void Simulation::initializeUniformCorrelatedCompetition(){
 		for (i = 0; i < num_species ; i++ ) {
 			for (j = 0; j < num_species; j++ ) {
 				b = (double) bdist(generateRandom());
-				x = getRandomUniformReal(competition_lower_bound, competition_upper_bound);
-				y = getRandomUniformReal(competition_lower_bound, competition_upper_bound);
-				z = getRandomUniformReal(competition_lower_bound, competition_upper_bound);
-
+				if (i == j) {
+					x = getRandomUniformReal(competition_diag_lower_bound, competition_diag_upper_bound);
+					y = getRandomUniformReal(competition_diag_lower_bound, competition_diag_upper_bound);
+					z = getRandomUniformReal(competition_diag_lower_bound, competition_diag_upper_bound);
+				}
+				else {
+					x = getRandomUniformReal(competition_lower_bound, competition_upper_bound);
+					y = getRandomUniformReal(competition_lower_bound, competition_upper_bound);
+					z = getRandomUniformReal(competition_lower_bound, competition_upper_bound);
+				}
 				if (competition_correlation > 0 ) {
 					competition_fecundity[i][j] = b * x + (1. - b) * y;
 					competition_growth[i][j] = b * x + (1. - b) * z;
@@ -121,12 +143,17 @@ void Simulation::initializeTNormalCorrelatedCompetition(){
 			for (j = 0; j < num_species; j++) {
 
 				while (1) {
-
 					b = (double) bdist(generateRandom());
-					x = getRandomNormal(competition_mean, competition_sdev);
-					y = getRandomNormal(competition_mean, competition_sdev);
-					z = getRandomNormal(competition_mean, competition_sdev);
-
+					if (i == j) {
+						x = getRandomNormal(competition_diag_mean, competition_diag_sdev);
+						y = getRandomNormal(competition_diag_mean, competition_diag_sdev);
+						z = getRandomNormal(competition_diag_mean, competition_diag_sdev);
+					}
+					else {
+						x = getRandomNormal(competition_mean, competition_sdev);
+						y = getRandomNormal(competition_mean, competition_sdev);
+						z = getRandomNormal(competition_mean, competition_sdev);
+					}
 					if( competition_correlation > 0 ) {
 						competition_fecundity[i][j] = b * x + (1. - b) * y;
 						competition_growth[i][j] = b * x + (1.- b) * z;
@@ -137,9 +164,18 @@ void Simulation::initializeTNormalCorrelatedCompetition(){
 					}
 				
 					// first-level of rejection sampling to obey bounds of truncated normal
-					if (competition_lower_bound <= competition_fecundity[i][j] && competition_upper_bound >= competition_fecundity[i][j]) {
-						if( competition_lower_bound <= competition_growth[i][j] && competition_upper_bound >= competition_growth[i][j] ) {
-							break;
+					if (i == j) {
+						if (competition_diag_lower_bound <= competition_fecundity[i][j] && competition_diag_upper_bound >= competition_fecundity[i][j]) {
+							if( competition_diag_lower_bound <= competition_growth[i][j] && competition_diag_upper_bound >= competition_growth[i][j] ) {
+								break;
+							}
+						}
+					}
+					else {
+						if (competition_lower_bound <= competition_fecundity[i][j] && competition_upper_bound >= competition_fecundity[i][j]) {
+							if( competition_lower_bound <= competition_growth[i][j] && competition_upper_bound >= competition_growth[i][j] ) {
+								break;
+							}	
 						}
 					}
 				}

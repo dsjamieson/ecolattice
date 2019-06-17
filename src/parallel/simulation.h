@@ -67,7 +67,8 @@ class Simulation {
 	
 		// Competition parameters
 		std::string competition_filename, competition_type;
-		double competition_lower_bound, competition_upper_bound, competition_mean, competition_sdev;
+		double competition_lower_bound, competition_diag_lower_bound, competition_upper_bound, competition_diag_upper_bound; 
+		double competition_mean, competition_diag_mean, competition_sdev, competition_diag_sdev;
 		double competition_correlation, imbalance, fecundity_transitivity_type, growth_transitivity_type, fecundity_growth_relative_hierarchy;
 		double fecundity_imbalance_mean, growth_imbalance_mean, fecundity_growth_correlation;
 		double fecundity_relative_intransitivity, growth_relative_intransitivity;

@@ -23,6 +23,8 @@ Simulation::Simulation(std::string filename, int p_id) {
 	competition_type = "Uniform";
 	competition_upper_bound = 0;
 	competition_lower_bound = -1;
+	competition_diag_upper_bound = 0;
+	competition_diag_lower_bound = -1;
 	competition_correlation = 0;
 	imbalance = 0.5;
 	fecundity_transitivity_type = 0.;
@@ -170,6 +172,23 @@ void Simulation::initializeRandomSimulation() {
 		exit(0);
 	}
 	competition_mean = (competition_lower_bound + competition_upper_bound) / 2.;
+	// competition for diagonal elements can have different parameters
+	getParameter(&competition_diag_lower_bound, "CompetitionDiagLower", 0);
+	if (fabs(competition_diag_lower_bound) > 1.) {
+		if (id == 0)
+			fprintf(stderr, "Error, CompetitionDiagLower must be between -1 and 1\n");
+		MPI_Finalize();
+		exit(0);
+	}
+	getParameter(&competition_diag_upper_bound, "CompetitionDiagUpper", 0);
+	if (fabs(competition_diag_upper_bound) > 1.) {
+		if (id == 0)
+			fprintf(stderr, "Error, CompetitionDiagUpper must be between -1 and 1\n");
+		MPI_Finalize();
+		exit(0);
+	}
+	competition_diag_mean = (competition_diag_lower_bound + competition_diag_upper_bound) / 2.;
+
 	// competition type (uniform, truncated normal), mean, and std. deviation
 	getParameter(&competition_type, "CompetitionType", 0);
 	if (competition_type.compare("TNormal") == 0) {
@@ -180,7 +199,15 @@ void Simulation::initializeRandomSimulation() {
 			MPI_Finalize();
 			exit(0);
 		}
+		getParameter(&competition_diag_mean, "CompetitionDiagMean", 0);
+		if (competition_diag_mean < competition_diag_lower_bound || competition_diag_mean > competition_diag_upper_bound) {
+			if (id == 0)
+				fprintf(stderr, "Error, CompetitionDiagMean must be between CompetitionDiagLower and CompetitionDiagUpper\n");
+			MPI_Finalize();
+			exit(0);
+		}
 		getParameter(&competition_sdev, "CompetitionSdev", 1);
+		getParameter(&competition_diag_sdev, "CompetitionDiagSdev", 1);
 	}
 	// optional competition structural features
 	// correlation between growth and fecundity competition
@@ -764,7 +791,7 @@ void Simulation::updateSingleSite(int i, int j) {
 			species_abundance[this_species - 1]--;
 		}
 	}
-	// no matter what happened in this site, four random numbers will be discarded (the maximum number of random numbers used in the simulation)
+	// no matter what happened in this site, a total of four random numbers will be discarded (the maximum number of random numbers used in the simulation)
 	discardRandom(((unsigned long long) 4 - (random_count - start_random_count)));
 
 	return;
@@ -935,7 +962,7 @@ void Simulation::saveCompetition() {
 			competition_file << std::endl;
 		}
 
-	competition_file << "# fecundity transitivity row sum:" << std::endl;
+	competition_file << "# Fecundity transitivity row sum:" << std::endl;
 	for (i = 0; i < num_species; i++) {
 		competition_file << " " << fecundity_row_sum[i];
 		if (i < num_species-1)
@@ -943,7 +970,7 @@ void Simulation::saveCompetition() {
 	}
 	competition_file << std::endl;
 
-	competition_file << "# growth row sum:" << std::endl;
+	competition_file << "# Growth row sum:" << std::endl;
 	for (i = 0; i < num_species; i++) {
 		competition_file << " " << growth_row_sum[i];
 		if (i < num_species-1)

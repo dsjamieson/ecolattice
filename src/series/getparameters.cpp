@@ -18,8 +18,9 @@ void Simulation::checkInputFormat() {
 						  "JuvenileSurvival", "JuvenileSurvivalSdev", "AdultSurvival", "AdultSurvivalSdev", "MaximumCompetition",
 						  "MaximumCompetitionSdev", "DispersalProbability", "DispersalProbabilitySdev", "DispersalLength",
 						  "DispersalLengthSdev", "Fecundity", "FecunditySdev", "CompetitionLower", "CompetitionUpper",
+						  "CompetitionDiagLower", "CompetitionDiagUpper", "CompetitionDiagMean", "CompetitionDiagSdev",
 						  "CompetitionType", "CompetitionMean", "CompetitionSdev", "CompetitionCorr", "Imbalance", "FecundityTransitivity",
-						  "GrowthTransitivity", "RelativeHierarchy", "RestartTime", "CompetitionFile", "MinPersistence" , NULL};
+						  "GrowthTransitivity", "RelativeHierarchy", "RestartTime", "CompetitionFile", "MinPersistence", NULL};
 
 	int i = 0;
 	int line_num = 0;

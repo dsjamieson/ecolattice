@@ -25,11 +25,15 @@ DispersalLengthSdev =
 Fecundity = 12 				# Maximum seeds produced by individual of species during dispersal
 FecunditySdev =
 
-CompetitionLower = -1. 		# Lower bound on competition matrix elements
-CompetitionUpper = 0.5 		# Upper bound on competition matrix elements
+CompetitionLower = -1. 		# Lower bound on competition matrix off-diagonal elements
+CompetitionUpper = 0.5 		# Upper bound on competition matrix off-diagonal elements
 CompetitionType = Uniform	# Type of distribution for competition matrix elements, Uniform or Tnormal
-CompetitionMean = -0.5 		# Optional, only for TNormal
-CompetitionSdev = 0.2		# Required for TNormal
+CompetitionMean = -0.5 		# Optional, only required for TNormal
+CompetitionSdev = 0.2		# Optional, only required for TNormal
+CompetitionDiagLower = -1. 		# Lower bound on competition matrix diagonal elements
+CompetitionDiagUpper = 0.5 		# Upper bound on competition matrix diagonal elements
+CompetitionDiagMean = -0.5 		# Optional, only required for TNormal (diagonal elements)
+CompetitionDiagSdev = 0.2		# Optional, only required for TNormal (diagonal elements)
 
 # Only one of the following can be set to a non-default value
 CompetitionCorr = 0.0 			# Correlation between fecundity and growth competition, default 0.0
