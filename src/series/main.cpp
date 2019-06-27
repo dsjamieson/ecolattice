@@ -20,6 +20,8 @@ int main(int argc, char* argv[]) {
 		exit(0);
 	}
 
+	fprintf(stdout, "Running in series\n");
+
 	int i, j, lattice_size, time_step, start_time, max_time_step;
 	int persistence, min_persistence;
 	
@@ -38,8 +40,12 @@ int main(int argc, char* argv[]) {
 		sim.saveLattice(0);
 	}
 
+	fprintf(stdout, "Starting at time step %d\n", start_time);
+
 	// run simulation
 	for (time_step = start_time; time_step < max_time_step + 1; time_step++) {
+
+		std::chrono::steady_clock::time_point t_start = std::chrono::steady_clock::now();
 
 		for (i = 0; i < lattice_size; i++) {
 			for (j = 0;j < lattice_size; j++) {
@@ -71,7 +77,9 @@ int main(int argc, char* argv[]) {
 		sim.saveLattice(time_step);
 		sim.saveDispersal(time_step);
 
-		fprintf(stdout, "done step %d\n", time_step);
+		std::chrono::steady_clock::time_point t_end = std::chrono::steady_clock::now();
+		std::chrono::duration<double, std::milli> duration = (t_end - t_start) / 1000.;
+		fprintf(stdout, "Done step %d of %d in %.2f seconds\n", time_step, max_time_step, duration);
 	}
 	return(0);
 }

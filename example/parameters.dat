@@ -27,7 +27,7 @@ FecunditySdev =
 
 CompetitionLower = -1. 		# Lower bound on competition matrix off-diagonal elements
 CompetitionUpper = 0.5 		# Upper bound on competition matrix off-diagonal elements
-CompetitionType = Uniform	# Type of distribution for competition matrix elements, Uniform or Tnormal
+CompetitionType = Uniform	# Type of distribution for competition matrix elements, Uniform or TNormal
 CompetitionMean = -0.5 		# Optional, only required for TNormal
 CompetitionSdev = 0.2		# Optional, only required for TNormal
 CompetitionDiagLower = -1. 		# Lower bound on competition matrix diagonal elements
