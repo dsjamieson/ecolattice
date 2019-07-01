@@ -44,6 +44,7 @@ Simulation::Simulation(std::string filename, int p_id) {
 	if (restart_time < 0) {
 		if (id == 0)
 			fprintf(stderr, "Error, RestartTime must be positive\n");
+		MPI_Finalize();
 		exit(0);
 	}
 
@@ -61,6 +62,7 @@ Simulation::Simulation(std::string filename, int p_id) {
 	if (lattice_size < 0) {
 		if (id == 0)
 			fprintf(stderr, "Error, LatticeSize must be positive\n");
+		MPI_Finalize();
 		exit(0);
 	}
 	getParameter(&num_species, "Species", 1);
@@ -69,12 +71,14 @@ Simulation::Simulation(std::string filename, int p_id) {
 	if (initial_occupancy > 1 || initial_occupancy < 0) {
 		if (id == 0)
 			fprintf(stderr, "Error, InitialOccupancy must be between 0 and 1\n");
+		MPI_Finalize();
 		exit(0);
 	}
 	getParameter(&germination_probability, "GerminationProbability", 1);
 	if (germination_probability > 1 || germination_probability < 0) {
 		if (id == 0)
 			fprintf(stderr, "Error, GerminationProbability must be between 0 and 1\n");
+		MPI_Finalize();
 		exit(0);
 	}
 	getParameter(&outfile_base, "OutfileBase", 1);
@@ -86,6 +90,7 @@ Simulation::Simulation(std::string filename, int p_id) {
 		else {
 			if (id == 0)
 				fprintf(stderr, "Error, no directory %s\n", outfile_dir.c_str());
+			MPI_Finalize();
 			exit(0);
 		}
 	}
@@ -93,6 +98,7 @@ Simulation::Simulation(std::string filename, int p_id) {
 	if (min_persistence > num_species || min_persistence < 0) {
 		if (id == 0)
 			fprintf(stderr, "Error, MinPersistence must be between 0 and Species\n");
+		MPI_Finalize();
 		exit(0);
 	}
 
@@ -124,6 +130,7 @@ Simulation::Simulation(std::string filename, int p_id) {
 		if (id == 0)
 			fprintf(stderr, "Error, too many random numbers used to generate initial conditions.\n");
 			fprintf(stderr, "Probable causes are the parameterization of TNormal distribution or severe competition correlation\n");
+		MPI_Finalize();
 		exit(0);
 	}
 	discardRandom(max_random_count - random_count);
@@ -154,12 +161,14 @@ void Simulation::initializeRandomSimulation() {
 	if (fabs(competition_lower_bound) > 1.) {
 		if (id == 0)
 			fprintf(stderr, "Error, CompetitionLower must be between -1 and 1\n");
+		MPI_Finalize();
 		exit(0);
 	}
 	getParameter(&competition_upper_bound, "CompetitionUpper", 0);
 	if (fabs(competition_upper_bound) > 1.) {
 		if (id == 0)
 			fprintf(stderr, "Error, CompetitionUpper must be between -1 and 1\n");
+		MPI_Finalize();
 		exit(0);
 	}
 	competition_mean = (competition_lower_bound + competition_upper_bound) / 2.;
@@ -168,12 +177,14 @@ void Simulation::initializeRandomSimulation() {
 	if (fabs(competition_diag_lower_bound) > 1.) {
 		if (id == 0)
 			fprintf(stderr, "Error, CompetitionDiagLower must be between -1 and 1\n");
+		MPI_Finalize();
 		exit(0);
 	}
 	getParameter(&competition_diag_upper_bound, "CompetitionDiagUpper", 0);
 	if (fabs(competition_diag_upper_bound) > 1.) {
 		if (id == 0)
 			fprintf(stderr, "Error, CompetitionDiagUpper must be between -1 and 1\n");
+		MPI_Finalize();
 		exit(0);
 	}
 	competition_diag_mean = (competition_diag_lower_bound + competition_diag_upper_bound) / 2.;
@@ -185,12 +196,14 @@ void Simulation::initializeRandomSimulation() {
 		if (competition_mean < competition_lower_bound || competition_mean > competition_upper_bound) {
 			if (id == 0)
 				fprintf(stderr, "Error, CompetitionMean must be between CompetitionLower and CompetitionUpper\n");
+			MPI_Finalize();
 			exit(0);
 		}
 		getParameter(&competition_diag_mean, "CompetitionDiagMean", 0);
 		if (competition_diag_mean < competition_diag_lower_bound || competition_diag_mean > competition_diag_upper_bound) {
 			if (id == 0)
 				fprintf(stderr, "Error, CompetitionDiagMean must be between CompetitionDiagLower and CompetitionDiagUpper\n");
+			MPI_Finalize();
 			exit(0);
 		}
 		getParameter(&competition_sdev, "CompetitionSdev", 1);
@@ -202,6 +215,7 @@ void Simulation::initializeRandomSimulation() {
 	if (fabs(competition_correlation) > 1.) {
 		if (id == 0)
 			fprintf(stderr, "Error, CompetitionCorr must be between -1 and 1\n");
+		MPI_Finalize();
 		exit(0);
 	}
 	// imbalance between species pairs in competition matrices
@@ -209,6 +223,7 @@ void Simulation::initializeRandomSimulation() {
 	if (imbalance < 0 || imbalance > 1) {
 		if (id == 0)
 			fprintf(stderr, "Error, Imbalance must be between 0 and 1\n");
+		MPI_Finalize();
 		exit(0);
 	}
 	// transitivity of matrices, 0 = random, 1 = max. transitivity, -1 = max intransitivity
@@ -217,28 +232,33 @@ void Simulation::initializeRandomSimulation() {
 	if (fabs(fecundity_transitivity_type) != 1. && fecundity_transitivity_type != 0.) {
 		if (id == 0)
 			fprintf(stderr, "Error, current implementation only allows for FecundityTransitivity 0 (random), maximum (1), or minimum (-1)\n");
+		MPI_Finalize();
 		exit(0);
 	}
 	getParameter(&growth_transitivity_type, "GrowthTransitivity", 0);
 	if (fabs(growth_transitivity_type) != 1. && growth_transitivity_type != 0.) {
 		if (id == 0)
 			fprintf(stderr, "Error, current implementation only allows for GrowthTransitivity 0 (random), maximum (1), or minimum (-1)\n");
+		MPI_Finalize();
 		exit(0);
 	}
 	getParameter(&fecundity_growth_relative_hierarchy, "RelativeHierarchy", 0);
 	if (fabs(fecundity_growth_relative_hierarchy) != 1. && fecundity_growth_relative_hierarchy != 0.) {
 		if (id == 0)
 			fprintf(stderr, "Error, RelativeHierarchy must be +/-1 (equal/inverted), or 0 (unrelated)\n");
+		MPI_Finalize();
 		exit(0);
 	}
 	if (fecundity_growth_relative_hierarchy != 0 && (fecundity_transitivity_type == 0 || growth_transitivity_type == 0)) {
 		if (id == 0)
 			fprintf(stderr, "Error, if RelativeHierarchy is not zero, neither FecundityTransitive nor GrowthTransitivity can be zero\n");
+		MPI_Finalize();
 		exit(0);
 	}
 	if ((competition_correlation!=0) + (imbalance!=0.5) + ((fabs(fecundity_transitivity_type) + fabs(growth_transitivity_type)) != 0) > 1) {
 		if (id == 0)
 			fprintf(stderr, "Error, only one of CompetitionCorr, Imbalance, and (Fecundity/Growth)Transitivity can be set\n");
+		MPI_Finalize();
 		exit(0);
 	}
 
@@ -262,6 +282,7 @@ void Simulation::initializeRandomSimulation() {
 	else {
 		if (id == 0)
 			fprintf(stderr, "CompetitionType must be either Uniform or TNormal\n");
+		MPI_Finalize();
 		exit(0);
 	}
 	// if competition is imbalanced (one species has a stronger effect on the second than the second has on the first
@@ -277,6 +298,7 @@ void Simulation::initializeRandomSimulation() {
 		if (id == 0)
 			fprintf(stderr, "Error, too many random numbers used to generate competition and parameters.\n");
 			fprintf(stderr, "Probable causes are the parameterization of TNormal distribution or severe competition correlation\n");
+		MPI_Finalize();
 		exit(0);
 	}
 	discardRandom(max_random_count - random_count);
@@ -305,6 +327,7 @@ void Simulation::initializeReplicateSimulation() {
 		if (id == 0)
 			fprintf(stderr, "Error, too many random numbers used to generate competition and parameters.\n");
 			fprintf(stderr, "Probable causes are the parameterization of TNormal distribution or severe competition correlation\n");
+		MPI_Finalize();
 		exit(0);
 	}
 	discardRandom(max_random_count - random_count);
@@ -378,6 +401,7 @@ void Simulation::reinitializeSimulation(int time_step) {
 		if (id == 0)
 			fprintf(stderr, "Error, too many random numbers used to generate initial conditions.\n");
 			fprintf(stderr, "Probable causes are the parameterization of TNormal distribution or severe competition correlation\n");
+		MPI_Finalize();
 		exit(0);
 	}
 
@@ -399,6 +423,7 @@ void Simulation::allocSimulation() {
 	dispersal_probability = new double[num_species];
 	if (!species_abundance || !delta || !juvenile_survival_probability || !adult_survival_probability || !maximum_competition) {
 		fprintf(stderr, "Error, unable to allocate memory for survival or maximum competition arrays\n");
+		MPI_Finalize();
 		exit(-1);
 	}
 	fecundity_row_sum = new double[num_species];
@@ -407,6 +432,7 @@ void Simulation::allocSimulation() {
 	growth_transitivity = new double *[num_species];
 	if (!fecundity_row_sum || !growth_row_sum || !fecundity_transitivity || !growth_transitivity) {
 		fprintf(stderr, "Error, unable to allocate memory for transitivity arrays\n");
+		MPI_Finalize();
 		exit(-1);
 	}
 	species_occupancy = new double[num_species];
@@ -414,12 +440,14 @@ void Simulation::allocSimulation() {
 	intrinsic_fecundity = new double[num_species];
 	if (!species_occupancy  || !dispersal_length|| !intrinsic_fecundity ) {
 		fprintf(stderr, "Error, unable to allocate memory for species occupancy, dispersal, or intrinsic fecundity arrays\n");
+		MPI_Finalize();
 		exit(-1);
 	}
 	competition_fecundity = new double *[num_species];
 	competition_growth = new double *[num_species];
 	if (!competition_fecundity || !competition_growth) {
 		fprintf(stderr, "Error, unable to allocate memory for growth or fecundity competition matrices\n");
+		MPI_Finalize();
 		exit(-1);
 	}
 	for (i = 0; i < num_species ; i++) {
@@ -441,10 +469,12 @@ void Simulation::allocSimulation() {
 		growth_transitivity[i] = new double[num_species];
 		if (!fecundity_transitivity[i] || !growth_transitivity[i]) {
 			fprintf(stderr, "Error, unable to allocate memory for transitivity arrays\n");
+			MPI_Finalize();
 			exit(-1);
 		}
 		if (!competition_fecundity[i] || !competition_growth[i]) {
 			fprintf(stderr, "Error, unable to allocate memory for competition matrices\n");
+			MPI_Finalize();
 			exit(-1);
 		}
 		for (j = 0; j < num_species; j++) {
@@ -461,6 +491,7 @@ void Simulation::allocSimulation() {
 	next_dispersal_lattice = new double **[lattice_size];
 	if (!lattice || !next_lattice || !dispersal_lattice || !next_dispersal_lattice) {
 		fprintf(stderr, "Error, unable to allocate memory for lattice and dispersal lattice\n");
+		MPI_Finalize();
 		exit(-1);
 	}
 	for (i = 0; i < lattice_size; i++) {
@@ -470,6 +501,7 @@ void Simulation::allocSimulation() {
 		next_dispersal_lattice[i] = new double *[lattice_size];
 		if (!lattice[i] || !next_lattice[i] || !dispersal_lattice[i] || !next_dispersal_lattice[i]) {
 			fprintf(stderr, "Error, unable to allocate memory for lattice and dispersal lattice\n");
+			MPI_Finalize();
 			exit(-1);
 		}
 		for (j = 0; j < lattice_size; j++) {
@@ -479,6 +511,7 @@ void Simulation::allocSimulation() {
 			next_dispersal_lattice[i][j] = new double[num_species];
 			if (!dispersal_lattice[i][j] || !next_dispersal_lattice[i][j]) {
 				fprintf(stderr, "Error, unable to allocate memory for dispersal lattice\n");
+				MPI_Finalize();
 				exit(-1);
 			}
 			for (k = 0; k < num_species; k++) {
@@ -665,6 +698,7 @@ void Simulation::updateSingleSite(int i, int j) {
 			neighborhood = new int[(2 * this_delta + 1) * (2 * this_delta + 1)]; 
 			if (!neighborhood) {
 					fprintf(stderr, "Error, neighborhood memory allocation failed for site %d %d\n", i, j);	
+					MPI_Finalize();
 					exit(-1);
 			}
 			for (k = 0; k < (2 * this_delta + 1) * (2 * this_delta + 1); k++)
@@ -672,6 +706,7 @@ void Simulation::updateSingleSite(int i, int j) {
 			neighborhood_abundance = new int[num_species];
 			if (!neighborhood_abundance) {
 					fprintf(stderr, "Error, neighborhood abundance memory allocation failed for site %d %d\n", i, j);	
+					MPI_Finalize();
 					exit(-1);
 			}
 			for (k = 0; k < num_species; k++)
@@ -735,12 +770,14 @@ void Simulation::updateSingleSite(int i, int j) {
 				distance_probability = new double*[this_max_dispersal + 1];
 				if (!distance_probability) {
 					fprintf(stderr, "Error, distance probability memory allocation failed for site %d %d\n", i, j);	
+					MPI_Finalize();
 					exit(-1);
 				}
 				for (k = 0; k <= this_max_dispersal; k++) {
 					distance_probability[k] = new double[this_max_dispersal];
 					if (!distance_probability[k]) {
 						fprintf(stderr, "Error, distance probability memory allocation failed for site %d %d\n", i, j);	
+						MPI_Finalize();
 						exit(-1);
 					}
 					for (l = 1; l <= this_max_dispersal; l++) {
@@ -843,6 +880,7 @@ void Simulation::saveLattice(int time_step) {
 	if (!lattice_file.is_open()) {
 			if (id == 0)
 				fprintf(stderr, "Error, could not open time step %d lattice file file to load\n", time_step);
+			MPI_Finalize();
 			exit(0);
 	}
 	for (i = 0; i < lattice_size; i++) {
@@ -877,6 +915,7 @@ void Simulation::saveCompetition() {
 	if (!competition_file.is_open()) {
 			if (id == 0)
 				fprintf(stderr, "Error, could not open competition file to save\n");
+			MPI_Finalize();
 			exit(0);
 	}
 
@@ -975,7 +1014,7 @@ void Simulation::saveCompetition() {
 	competition_file << "# Fecundity transitivity row sum:" << std::endl;
 	for (i = 0; i < num_species; i++) {
 		competition_file << " " << fecundity_row_sum[i];
-		if (i < num_species-1)
+		if (i < num_species - 1)
 			competition_file << ",";
 	}
 	competition_file << std::endl;
@@ -983,7 +1022,7 @@ void Simulation::saveCompetition() {
 	competition_file << "# Growth row sum:" << std::endl;
 	for (i = 0; i < num_species; i++) {
 		competition_file << " " << growth_row_sum[i];
-		if (i < num_species-1)
+		if (i < num_species - 1)
 			competition_file << ",";
 	}
 	competition_file << std::endl;
@@ -1096,7 +1135,7 @@ void Simulation::addDispersal(int i, int j, int s, double t) {
 	dispersal_lattice[i][j][s] += t;
 	return;
 }
-:
+
 
 int Simulation::getPersistence() {
 

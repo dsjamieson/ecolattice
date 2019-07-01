@@ -44,7 +44,6 @@ Simulation::Simulation(std::string filename, int p_id) {
 	if (restart_time < 0) {
 		if (id == 0)
 			fprintf(stderr, "Error, RestartTime must be positive\n");
-		MPI_Finalize();
 		exit(0);
 	}
 
@@ -62,7 +61,6 @@ Simulation::Simulation(std::string filename, int p_id) {
 	if (lattice_size < 0) {
 		if (id == 0)
 			fprintf(stderr, "Error, LatticeSize must be positive\n");
-		MPI_Finalize();
 		exit(0);
 	}
 	getParameter(&num_species, "Species", 1);
@@ -71,14 +69,12 @@ Simulation::Simulation(std::string filename, int p_id) {
 	if (initial_occupancy > 1 || initial_occupancy < 0) {
 		if (id == 0)
 			fprintf(stderr, "Error, InitialOccupancy must be between 0 and 1\n");
-		MPI_Finalize();
 		exit(0);
 	}
 	getParameter(&germination_probability, "GerminationProbability", 1);
 	if (germination_probability > 1 || germination_probability < 0) {
 		if (id == 0)
 			fprintf(stderr, "Error, GerminationProbability must be between 0 and 1\n");
-		MPI_Finalize();
 		exit(0);
 	}
 	getParameter(&outfile_base, "OutfileBase", 1);
@@ -90,7 +86,6 @@ Simulation::Simulation(std::string filename, int p_id) {
 		else {
 			if (id == 0)
 				fprintf(stderr, "Error, no directory %s\n", outfile_dir.c_str());
-			MPI_Finalize();
 			exit(0);
 		}
 	}
@@ -98,7 +93,6 @@ Simulation::Simulation(std::string filename, int p_id) {
 	if (min_persistence > num_species || min_persistence < 0) {
 		if (id == 0)
 			fprintf(stderr, "Error, MinPersistence must be between 0 and Species\n");
-		MPI_Finalize();
 		exit(0);
 	}
 
@@ -106,7 +100,7 @@ Simulation::Simulation(std::string filename, int p_id) {
 	allocSimulation();
 
 	if (restart_time != 0) {
-		// continue a previous failed simulation or extend a previous simulation (repeat simulation)
+		// continue a previous failed simulation or extend a previous simulation (restart/repeat simulation)
 		initializeRestartSimulation();
 	}
 	else if (competition_filename.size() != 0) {
@@ -125,12 +119,11 @@ Simulation::Simulation(std::string filename, int p_id) {
 	getFecundityGrowthCorrelation();
 
 	// RNG is set to jump ahead to the maximum number of random draws that could have already been used by the RNG when initializing the simulation
-	unsigned long long max_random_count = (unsigned long long) 1000. * (4. * num_species * num_species + 5. * lattice_size * lattice_size);
+	max_random_count = (unsigned long long) 1000. * (4. * num_species * num_species + 5. * lattice_size * lattice_size);
 	if (random_count > max_random_count) {
 		if (id == 0)
 			fprintf(stderr, "Error, too many random numbers used to generate initial conditions.\n");
 			fprintf(stderr, "Probable causes are the parameterization of TNormal distribution or severe competition correlation\n");
-		MPI_Finalize();
 		exit(0);
 	}
 	discardRandom(max_random_count - random_count);
@@ -161,14 +154,12 @@ void Simulation::initializeRandomSimulation() {
 	if (fabs(competition_lower_bound) > 1.) {
 		if (id == 0)
 			fprintf(stderr, "Error, CompetitionLower must be between -1 and 1\n");
-		MPI_Finalize();
 		exit(0);
 	}
 	getParameter(&competition_upper_bound, "CompetitionUpper", 0);
 	if (fabs(competition_upper_bound) > 1.) {
 		if (id == 0)
 			fprintf(stderr, "Error, CompetitionUpper must be between -1 and 1\n");
-		MPI_Finalize();
 		exit(0);
 	}
 	competition_mean = (competition_lower_bound + competition_upper_bound) / 2.;
@@ -177,14 +168,12 @@ void Simulation::initializeRandomSimulation() {
 	if (fabs(competition_diag_lower_bound) > 1.) {
 		if (id == 0)
 			fprintf(stderr, "Error, CompetitionDiagLower must be between -1 and 1\n");
-		MPI_Finalize();
 		exit(0);
 	}
 	getParameter(&competition_diag_upper_bound, "CompetitionDiagUpper", 0);
 	if (fabs(competition_diag_upper_bound) > 1.) {
 		if (id == 0)
 			fprintf(stderr, "Error, CompetitionDiagUpper must be between -1 and 1\n");
-		MPI_Finalize();
 		exit(0);
 	}
 	competition_diag_mean = (competition_diag_lower_bound + competition_diag_upper_bound) / 2.;
@@ -196,14 +185,12 @@ void Simulation::initializeRandomSimulation() {
 		if (competition_mean < competition_lower_bound || competition_mean > competition_upper_bound) {
 			if (id == 0)
 				fprintf(stderr, "Error, CompetitionMean must be between CompetitionLower and CompetitionUpper\n");
-			MPI_Finalize();
 			exit(0);
 		}
 		getParameter(&competition_diag_mean, "CompetitionDiagMean", 0);
 		if (competition_diag_mean < competition_diag_lower_bound || competition_diag_mean > competition_diag_upper_bound) {
 			if (id == 0)
 				fprintf(stderr, "Error, CompetitionDiagMean must be between CompetitionDiagLower and CompetitionDiagUpper\n");
-			MPI_Finalize();
 			exit(0);
 		}
 		getParameter(&competition_sdev, "CompetitionSdev", 1);
@@ -215,7 +202,6 @@ void Simulation::initializeRandomSimulation() {
 	if (fabs(competition_correlation) > 1.) {
 		if (id == 0)
 			fprintf(stderr, "Error, CompetitionCorr must be between -1 and 1\n");
-		MPI_Finalize();
 		exit(0);
 	}
 	// imbalance between species pairs in competition matrices
@@ -223,7 +209,6 @@ void Simulation::initializeRandomSimulation() {
 	if (imbalance < 0 || imbalance > 1) {
 		if (id == 0)
 			fprintf(stderr, "Error, Imbalance must be between 0 and 1\n");
-		MPI_Finalize();
 		exit(0);
 	}
 	// transitivity of matrices, 0 = random, 1 = max. transitivity, -1 = max intransitivity
@@ -232,33 +217,28 @@ void Simulation::initializeRandomSimulation() {
 	if (fabs(fecundity_transitivity_type) != 1. && fecundity_transitivity_type != 0.) {
 		if (id == 0)
 			fprintf(stderr, "Error, current implementation only allows for FecundityTransitivity 0 (random), maximum (1), or minimum (-1)\n");
-		MPI_Finalize();
 		exit(0);
 	}
 	getParameter(&growth_transitivity_type, "GrowthTransitivity", 0);
 	if (fabs(growth_transitivity_type) != 1. && growth_transitivity_type != 0.) {
 		if (id == 0)
 			fprintf(stderr, "Error, current implementation only allows for GrowthTransitivity 0 (random), maximum (1), or minimum (-1)\n");
-		MPI_Finalize();
 		exit(0);
 	}
 	getParameter(&fecundity_growth_relative_hierarchy, "RelativeHierarchy", 0);
 	if (fabs(fecundity_growth_relative_hierarchy) != 1. && fecundity_growth_relative_hierarchy != 0.) {
 		if (id == 0)
 			fprintf(stderr, "Error, RelativeHierarchy must be +/-1 (equal/inverted), or 0 (unrelated)\n");
-		MPI_Finalize();
 		exit(0);
 	}
 	if (fecundity_growth_relative_hierarchy != 0 && (fecundity_transitivity_type == 0 || growth_transitivity_type == 0)) {
 		if (id == 0)
 			fprintf(stderr, "Error, if RelativeHierarchy is not zero, neither FecundityTransitive nor GrowthTransitivity can be zero\n");
-		MPI_Finalize();
 		exit(0);
 	}
 	if ((competition_correlation!=0) + (imbalance!=0.5) + ((fabs(fecundity_transitivity_type) + fabs(growth_transitivity_type)) != 0) > 1) {
 		if (id == 0)
 			fprintf(stderr, "Error, only one of CompetitionCorr, Imbalance, and (Fecundity/Growth)Transitivity can be set\n");
-		MPI_Finalize();
 		exit(0);
 	}
 
@@ -282,7 +262,6 @@ void Simulation::initializeRandomSimulation() {
 	else {
 		if (id == 0)
 			fprintf(stderr, "CompetitionType must be either Uniform or TNormal\n");
-		MPI_Finalize();
 		exit(0);
 	}
 	// if competition is imbalanced (one species has a stronger effect on the second than the second has on the first
@@ -298,7 +277,6 @@ void Simulation::initializeRandomSimulation() {
 		if (id == 0)
 			fprintf(stderr, "Error, too many random numbers used to generate competition and parameters.\n");
 			fprintf(stderr, "Probable causes are the parameterization of TNormal distribution or severe competition correlation\n");
-		MPI_Finalize();
 		exit(0);
 	}
 	discardRandom(max_random_count - random_count);
@@ -309,9 +287,10 @@ void Simulation::initializeRandomSimulation() {
 }
 
 void Simulation::initializeReplicateSimulation() {
-	/* method used to start a new simulation with the same random parameters, used for replicates.
+a	/* method used to start a new simulation with the same random parameters, used for replicates.
 	uses competition matrices, fecundities, occupancies, etc. from file, specified in 
-	"CompetitionFile." */
+	"CompetitionFile." replicates have the same parameters, but are different realizations
+	(i.e., dynamics will differ). */
 
 	// send seeds to RNG
 	seedGenerator();
@@ -326,7 +305,6 @@ void Simulation::initializeReplicateSimulation() {
 		if (id == 0)
 			fprintf(stderr, "Error, too many random numbers used to generate competition and parameters.\n");
 			fprintf(stderr, "Probable causes are the parameterization of TNormal distribution or severe competition correlation\n");
-		MPI_Finalize();
 		exit(0);
 	}
 	discardRandom(max_random_count - random_count);
@@ -339,7 +317,8 @@ void Simulation::initializeReplicateSimulation() {
 void Simulation::initializeRestartSimulation() {
 	/* method used if a previous simulation failed before completing or if you want to extend the simulation.
 	continues the simulation from where it left off. this method initializes the lattice, reloads the parameters from
-	the previous simulation, and starts up the RNG for the appropriate time step */
+	the previous simulation, and starts up the RNG for the appropriate time step. restarted simulations are identical
+	in both parameters and dynamics. */
 
 	// load seeds from competition file and sends to RNG
 	loadSeeds();
@@ -359,18 +338,16 @@ void Simulation::reinitializeSimulation(int time_step) {
 	by the central task, and 2) to reinitialize the simulation after the number of species drops below the minimum persistence.
 	method deletes already written output files (only for purpose 2) */
 
-	int i;
-
 	// delete previously written output files if simulation is being reinitialized after persistence is too low
 	if (id == 0) {
 		std::string fname;
 			fname = outfile_base + "_competition.csv";
 			remove(fname.c_str());
-		for (i = 0; i < time_step; i++) {
+		for (int i = 0; i < time_step; i++) {
 			fname = outfile_base+"_" + std::to_string(i) + ".csv";
 			remove(fname.c_str());
 		}
-		for (i = 1; i < num_species + 1; i++) { 
+		for (int i = 1; i < num_species + 1; i++) { 
 			fname = outfile_base + "_dispersal_s" + std::to_string(i) + "_0.csv";
 			remove(fname.c_str());
 			fname = outfile_base + "_dispersal_s" + std::to_string(i) + "_1.csv";
@@ -399,7 +376,6 @@ void Simulation::reinitializeSimulation(int time_step) {
 		if (id == 0)
 			fprintf(stderr, "Error, too many random numbers used to generate initial conditions.\n");
 			fprintf(stderr, "Probable causes are the parameterization of TNormal distribution or severe competition correlation\n");
-		MPI_Finalize();
 		exit(0);
 	}
 
@@ -412,7 +388,6 @@ void Simulation::reinitializeSimulation(int time_step) {
 void Simulation::allocSimulation() {
 	/* allocate memory for all arrays used in simulations, including parameter arrays, lattice with species locations, and dispersal lattice with seed locations. */
 
-	int i, j, k;
 	species_abundance = new int[num_species];
 	delta = new int[num_species];
 	juvenile_survival_probability = new double[num_species];
@@ -421,7 +396,6 @@ void Simulation::allocSimulation() {
 	dispersal_probability = new double[num_species];
 	if (!species_abundance || !delta || !juvenile_survival_probability || !adult_survival_probability || !maximum_competition) {
 		fprintf(stderr, "Error, unable to allocate memory for survival or maximum competition arrays\n");
-		MPI_Finalize();
 		exit(-1);
 	}
 	fecundity_row_sum = new double[num_species];
@@ -430,7 +404,6 @@ void Simulation::allocSimulation() {
 	growth_transitivity = new double *[num_species];
 	if (!fecundity_row_sum || !growth_row_sum || !fecundity_transitivity || !growth_transitivity) {
 		fprintf(stderr, "Error, unable to allocate memory for transitivity arrays\n");
-		MPI_Finalize();
 		exit(-1);
 	}
 	species_occupancy = new double[num_species];
@@ -438,17 +411,15 @@ void Simulation::allocSimulation() {
 	intrinsic_fecundity = new double[num_species];
 	if (!species_occupancy  || !dispersal_length|| !intrinsic_fecundity ) {
 		fprintf(stderr, "Error, unable to allocate memory for species occupancy, dispersal, or intrinsic fecundity arrays\n");
-		MPI_Finalize();
 		exit(-1);
 	}
 	competition_fecundity = new double *[num_species];
 	competition_growth = new double *[num_species];
 	if (!competition_fecundity || !competition_growth) {
 		fprintf(stderr, "Error, unable to allocate memory for growth or fecundity competition matrices\n");
-		MPI_Finalize();
 		exit(-1);
 	}
-	for (i = 0; i < num_species ; i++) {
+	for (int i = 0; i < num_species ; i++) {
 		species_abundance[i] = 0;
 		delta[i] = 0;
 		juvenile_survival_probability[i] = 0.;
@@ -467,15 +438,13 @@ void Simulation::allocSimulation() {
 		growth_transitivity[i] = new double[num_species];
 		if (!fecundity_transitivity[i] || !growth_transitivity[i]) {
 			fprintf(stderr, "Error, unable to allocate memory for transitivity arrays\n");
-			MPI_Finalize();
 			exit(-1);
 		}
 		if (!competition_fecundity[i] || !competition_growth[i]) {
 			fprintf(stderr, "Error, unable to allocate memory for competition matrices\n");
-			MPI_Finalize();
 			exit(-1);
 		}
-		for (j = 0; j < num_species; j++) {
+		for (int j = 0; j < num_species; j++) {
 			fecundity_transitivity[i][j] = 0.;
 			growth_transitivity[i][j] = 0.;
 			competition_fecundity[i][j] = 0.;
@@ -489,30 +458,27 @@ void Simulation::allocSimulation() {
 	next_dispersal_lattice = new double **[lattice_size];
 	if (!lattice || !next_lattice || !dispersal_lattice || !next_dispersal_lattice) {
 		fprintf(stderr, "Error, unable to allocate memory for lattice and dispersal lattice\n");
-		MPI_Finalize();
 		exit(-1);
 	}
-	for (i = 0; i < lattice_size; i++) {
+	for (int i = 0; i < lattice_size; i++) {
 		lattice[i] = new int[lattice_size];
 		next_lattice[i] = new int[lattice_size];
 		dispersal_lattice[i] = new double *[lattice_size];
 		next_dispersal_lattice[i] = new double *[lattice_size];
 		if (!lattice[i] || !next_lattice[i] || !dispersal_lattice[i] || !next_dispersal_lattice[i]) {
 			fprintf(stderr, "Error, unable to allocate memory for lattice and dispersal lattice\n");
-			MPI_Finalize();
 			exit(-1);
 		}
-		for (j = 0; j < lattice_size; j++) {
+		for (int j = 0; j < lattice_size; j++) {
 			lattice[i][j] = 0;
 			next_lattice[i][j] = 0;
 			dispersal_lattice[i][j] = new double[num_species];
 			next_dispersal_lattice[i][j] = new double[num_species];
 			if (!dispersal_lattice[i][j] || !next_dispersal_lattice[i][j]) {
 				fprintf(stderr, "Error, unable to allocate memory for dispersal lattice\n");
-				MPI_Finalize();
 				exit(-1);
 			}
-			for (k = 0; k < num_species; k++) {
+			for (int k = 0; k < num_species; k++) {
 				dispersal_lattice[i][j][k] = 0;
 				next_dispersal_lattice[i][j][k] = 0;
 			}
@@ -527,14 +493,12 @@ void Simulation::initializeLattice() {
 	occupancy of the lattice and the species specific probabilities. also determines whether individuals are juveniles or adults
 	with equal probability. */
 
-	int i, j;
-
 	std::bernoulli_distribution stage_dist(0.5);
 	std::bernoulli_distribution occupy_dist(initial_occupancy);
 	std::discrete_distribution<int> species_dist(species_occupancy, species_occupancy + num_species);
 
-	for (i = 0; i < lattice_size; i++) {
-		for (j = 0; j < lattice_size; j++) {
+	for (int i = 0; i < lattice_size; i++) {
+		for (int j = 0; j < lattice_size; j++) {
 			lattice[i][j] = occupy_dist(generateRandom());
 			if (stage_dist(generateRandom()) == 0 && lattice[i][j] != 0)
 				lattice[i][j] *= -1;
@@ -549,14 +513,13 @@ void Simulation::initializeLattice() {
 void Simulation::getSpeciesAbundance() {
 	/* calculate the number of individuals of each species in the lattice. */
 
-	int i, j, s;
-
-	for (i = 0; i < num_species; i++)
+	for (int i = 0; i < num_species; i++)
 		species_abundance[i] = 0;
 
-	for (i = 0; i < lattice_size; i++) {
-		for (j = 0; j < lattice_size; j++) {
-			s = abs(lattice[i][j]);
+	#pragma omp parallel for
+	for (int i = 0; i < lattice_size; i++) {
+		for (int j = 0; j < lattice_size; j++) {
+			int s = abs(lattice[i][j]);
 			if (s != 0)
 				species_abundance[s - 1]++;
 		}
@@ -568,12 +531,11 @@ void Simulation::getSpeciesAbundance() {
 void Simulation::resetLattice() {
 	/* for the current time step, set all elements of the lattice and the dispersal lattice to 0. used in simulation for the first time step (t = 0). */
 
-	int i, j, k;
-
-	for (i = 0; i < lattice_size; i++) {
-		for (j = 0; j < lattice_size; j++) {
+	#pragma omp parallel for
+	for (int i = 0; i < lattice_size; i++) {
+		for (int j = 0; j < lattice_size; j++) {
 			lattice[i][j] = 0;
-			for (k = 0; k < num_species; k++) {
+			for (int k = 0; k < num_species; k++) {
 				dispersal_lattice[i][j][k] = 0.;
 			}
 		}
@@ -586,12 +548,11 @@ void Simulation::resetNextLattice() {
 	/* for the next time step, set all elements of the lattice and the dispersal lattice to 0. used in simulation so that workers
 	can reset their local copies of 'next_lattice' and 'next_dispersal_lattice' */
 
-	int i, j, k;
-
-	for (i = 0; i < lattice_size; i++) {
-		for (j = 0; j < lattice_size; j++) {
+	#pragma omp parallel for
+	for (int i = 0; i < lattice_size; i++) {
+		for (int j = 0; j < lattice_size; j++) {
 			next_lattice[i][j] = 0;
-			for (k = 0; k < num_species; k++) {
+			for (int k = 0; k < num_species; k++) {
 				next_dispersal_lattice[i][j][k] = 0.;
 			}
 		}
@@ -620,13 +581,15 @@ void Simulation::discardRandom(unsigned long long n) {
 void Simulation::updateSingleSite(int i, int j) {
 	/* this method runs through all processes, including germination, survival, growth, reproduction, and death,
 	for a single site in the lattice. workers use this method to update their local copies of 'next_lattice' and 'next_dispersal_lattice' */
+	std::chrono::steady_clock::time_point t_start = std::chrono::steady_clock::now();
 
-	int k, l, kp, lp;
+	int k, l, kp, lp, pathway = 0;
 	unsigned long long start_random_count = random_count;
 
 	int this_delta = 0;
 	int this_species = 0;
 	int this_stage = 0;
+	int this_max_dispersal = 0;
 	double this_survival_probability = 0;
 	double this_intrinsic_fecundity = 0.;
 	double this_dispersal_probability = 0.;
@@ -645,7 +608,7 @@ void Simulation::updateSingleSite(int i, int j) {
 	double **distance_probability;
 
 	this_species = abs(lattice[i][j]);  // species in this site i, j
-	
+
 	// if the site is open, determine whether or not something germinates with a Bernoulli probability based on the total number of seeds in the site
 	// if something germinates, select the species that germinates with probability equal to the relative abundance of each species's seeds in this site.
 	if (this_species == 0) {
@@ -657,16 +620,22 @@ void Simulation::updateSingleSite(int i, int j) {
 		std::bernoulli_distribution germ_dist(1. - pow(1.- germination_probability, total_seeds));
 
 		if (germ_dist(generateRandom())) {
+
+			pathway++;
 			std::discrete_distribution<int> species_dist(dispersal_lattice[i][j], dispersal_lattice[i][j] + num_species);
 			l = abs(species_dist(generateRandom()));
 			next_lattice[i][j] = -(l + 1);
+			#pragma omp critical
 			species_abundance[l]++;
 		}
 		else {
+			#pragma omp critical
 			next_lattice[i][j] = 0;
 		}
 	}
 	else {
+
+		pathway++;
 		// if the site is not open, determine whether it's occupied by a juvenile or an adult
 		this_stage = lattice[i][j] / abs(lattice[i][j]);
 		// the individual survives with stage-specific probability
@@ -683,6 +652,8 @@ void Simulation::updateSingleSite(int i, int j) {
 		std::bernoulli_distribution survival_dist(this_survival_probability);
 		// if species survives, it persists to next time step
 		if (survival_dist(generateRandom())) {
+
+			pathway++;
 			next_lattice[i][j] = lattice[i][j];
 
 			// determine abundance of each species in the neighborhood of the focal individual
@@ -691,7 +662,6 @@ void Simulation::updateSingleSite(int i, int j) {
 			neighborhood = new int[(2 * this_delta + 1) * (2 * this_delta + 1)]; 
 			if (!neighborhood) {
 					fprintf(stderr, "Error, neighborhood memory allocation failed for site %d %d\n", i, j);	
-					MPI_Finalize();
 					exit(-1);
 			}
 			for (k = 0; k < (2 * this_delta + 1) * (2 * this_delta + 1); k++)
@@ -699,7 +669,6 @@ void Simulation::updateSingleSite(int i, int j) {
 			neighborhood_abundance = new int[num_species];
 			if (!neighborhood_abundance) {
 					fprintf(stderr, "Error, neighborhood abundance memory allocation failed for site %d %d\n", i, j);	
-					MPI_Finalize();
 					exit(-1);
 			}
 			for (k = 0; k < num_species; k++)
@@ -730,6 +699,7 @@ void Simulation::updateSingleSite(int i, int j) {
 			// if focal individual is a juvenile, it will grow to become an adult with a probability dependent on competition with individuals in its neighborhood
 			// depends on the growth competition matrix, which dictates these interactions. the maximum probability is set as a parameter (never a 100% chance of growing)
 			if (this_stage < 0) {
+				pathway++;
 				for (k = 0; k < num_species; k++)
 					growth_probability += competition_growth[this_species - 1][k] * ((double) neighborhood_abundance[k]) / ((double) total_abundance);
 				growth_probability = this_maximum_competition * exp(growth_probability);
@@ -738,10 +708,12 @@ void Simulation::updateSingleSite(int i, int j) {
 
 				std::bernoulli_distribution stage_dist(growth_probability);
 
-				if (stage_dist(generateRandom()))
+				if (stage_dist(generateRandom())) {
 					next_lattice[i][j] = abs(next_lattice[i][j]);
+				}
 			}
 			else {
+				pathway+=2;
 				// if focal individual is an adult, it will reproduce with a fecundity based on competition with individuals in its neighborhood
 				if (total_abundance != 0) {
 					for (k = 0; k < num_species; k++)
@@ -752,32 +724,73 @@ void Simulation::updateSingleSite(int i, int j) {
 					this_fecundity = this_intrinsic_fecundity;
 				}
 
-				// the fecundity (equal to the number of seeds produced by the focal individuals) is spread over the entire matrix
-				// the number of seeds at each site is an exponential function of distance, quickly decaying depending on the dispersal length parameter
-				distance_probability = new double*[lattice_size];
+				// fecundity, the number of seeds produced by the focal individuals, is spread over the entire matrix
+				// the number of seeds at each site is an exponential function of Euclidean distance
+				// probability of dispersal quickly decays with distance depending on the dispersal length parameter
+				// dispersal can occur within two times the dispersal length of the species
+				// setting a dispersal limit reduces size of distance_probability array and improves speed			
+				this_max_dispersal = (int) round(2 * dispersal_length[this_species - 1]);
+				distance_probability = new double*[this_max_dispersal + 1];
 				if (!distance_probability) {
 					fprintf(stderr, "Error, distance probability memory allocation failed for site %d %d\n", i, j);	
-					MPI_Finalize();
 					exit(-1);
 				}
-				for (k = 0; k < lattice_size; k++) {
-					distance_probability[k] = new double[lattice_size];
+				for (k = 0; k <= this_max_dispersal; k++) {
+					distance_probability[k] = new double[this_max_dispersal];
 					if (!distance_probability[k]) {
 						fprintf(stderr, "Error, distance probability memory allocation failed for site %d %d\n", i, j);	
-						MPI_Finalize();
 						exit(-1);
 					}
-					for (l = 0; l < lattice_size; l++) {
-						distance_probability[k][l] = pow(std::min(abs(i - k), lattice_size - abs(i - k)), 2);
-						distance_probability[k][l] += pow(std::min(abs(j - l), lattice_size -  abs(j - l)), 2);
-						distance_probability[k][l] = sqrt(distance_probability[k][l]);
-						distance_probability[k][l] = exp(log(this_dispersal_probability) / dispersal_length[this_species - 1] * distance_probability[k][l]);
-						distance_probability_sum += distance_probability[k][l];
+					for (l = 1; l <= this_max_dispersal; l++) {
+						double distance_x = (double) k;
+						double distance_y = (double) l;
+						double distance = sqrt(distance_x * distance_x + distance_y * distance_y);
+						double probability = 0.;
+						if (round(distance) <= this_max_dispersal) {
+							probability = exp(log(this_dispersal_probability) / dispersal_length[this_species - 1] * distance);
+							distance_probability_sum +=	4. * probability;
+						}				
+						distance_probability[k][l - 1] = probability;
 					}
 				}
-				for (k = 0; k < lattice_size; k++) {
-					for (l = 0; l < lattice_size; l++) {
-						next_dispersal_lattice[k][l][this_species - 1] += this_fecundity * distance_probability[k][l] / distance_probability_sum;
+				for (k = 0; k <= this_max_dispersal; k++) {
+					for (l = 1; l <= this_max_dispersal; l++) {
+						if (k == 0) {
+							int i1 = (i + l) % lattice_size;
+							int i2 = (i - l) % lattice_size;
+							if (i2 < 0)
+								i2 += lattice_size;
+							int j1 = (j + l) % lattice_size;
+							int j2 = (j - l) % lattice_size;
+							if( j2 < 0)
+								j2 += lattice_size;
+							#pragma omp atomic
+							next_dispersal_lattice[i][j1][this_species - 1] += this_fecundity * distance_probability[k][l - 1] / distance_probability_sum;
+							#pragma omp atomic
+							next_dispersal_lattice[i][j2][this_species - 1] += this_fecundity * distance_probability[k][l - 1] / distance_probability_sum;
+							#pragma omp atomic
+							next_dispersal_lattice[i1][j][this_species - 1] += this_fecundity * distance_probability[k][l - 1] / distance_probability_sum;
+							#pragma omp atomic
+							next_dispersal_lattice[i2][j][this_species - 1] += this_fecundity * distance_probability[k][l - 1] / distance_probability_sum;	
+							}
+						else {
+							int i1 = (i + k) % lattice_size;
+							int i2 = (i - k) % lattice_size;
+							if (i2 < 0)
+								i2 += lattice_size;
+							int j1 = (j + l) % lattice_size;
+							int j2 = (j - l) % lattice_size;
+							if (j2 < 0)
+								j2 += lattice_size;
+							#pragma omp atomic
+							next_dispersal_lattice[i1][j1][this_species - 1] += this_fecundity * distance_probability[k][l - 1] / distance_probability_sum;
+							#pragma omp atomic
+							next_dispersal_lattice[i2][j1][this_species - 1] += this_fecundity * distance_probability[k][l - 1] / distance_probability_sum;
+							#pragma omp atomic
+							next_dispersal_lattice[i1][j2][this_species - 1] += this_fecundity * distance_probability[k][l - 1] / distance_probability_sum;
+							#pragma omp atomic
+							next_dispersal_lattice[i2][j2][this_species - 1] += this_fecundity * distance_probability[k][l - 1] / distance_probability_sum;
+						}
 					}
 					delete[] distance_probability[k];
 				}
@@ -786,13 +799,23 @@ void Simulation::updateSingleSite(int i, int j) {
 			delete[] neighborhood_abundance;
 		}
 		else {
+			pathway++;
 			// focal individual dies
 			next_lattice[i][j] = 0;
+			#pragma omp critical
 			species_abundance[this_species - 1]--;
 		}
 	}
+
 	// no matter what happened in this site, a total of four random numbers will be discarded (the maximum number of random numbers used in the simulation)
 	discardRandom(((unsigned long long) 4 - (random_count - start_random_count)));
+
+	std::chrono::steady_clock::time_point t_end = std::chrono::steady_clock::now();
+	std::chrono::duration<double, std::milli> duration = (t_end - t_start) / 1000.;
+	if (i < 10 && j < 10) {
+		#pragma omp critical
+		fprintf(stdout, "    Done site %d, %d. Pathway %d in %.4e seconds\n", i, j, pathway, duration);
+	}
 
 	return;
 }
@@ -803,13 +826,12 @@ void Simulation::nextToThis() {
 	and sets the next time step to be unoccupied. does the same for seeds in the dispersal
 	lattice */
 
-	int i, j, k;
-
-	for (i = 0; i < lattice_size; i++) {
-		for (j = 0; j < lattice_size; j++) {
+	#pragma omp parallel for
+	for (int i = 0; i < lattice_size; i++) {
+		for (int j = 0; j < lattice_size; j++) {
 			lattice[i][j] = next_lattice[i][j];
 			next_lattice[i][j] = 0;
-			for (k = 0; k < num_species; k++) {
+			for (int k = 0; k < num_species; k++) {
 				dispersal_lattice[i][j][k] = next_dispersal_lattice[i][j][k];
 				next_dispersal_lattice[i][j][k] = 0;
 			}
@@ -822,20 +844,16 @@ void Simulation::nextToThis() {
 void Simulation::saveLattice(int time_step) {
 	/* saves the species locations in the lattice from the current time step to file */
 
-	int i, j;	
-
 	std::ofstream lattice_file;
 	lattice_file.open(outfile_base+"_" + std::to_string(time_step) + ".csv", std::ios::out | std::ios::trunc);
 
 	if (!lattice_file.is_open()) {
 			if (id == 0)
 				fprintf(stderr, "Error, could not open time step %d lattice file file to load\n", time_step);
-			MPI_Finalize();
 			exit(0);
 	}
-
-	for (i = 0; i < lattice_size; i++) {
-		for (j = 0; j < lattice_size; j++) {
+	for (int i = 0; i < lattice_size; i++) {
+		for (int j = 0; j < lattice_size; j++) {
 			if (lattice[i][j] < 0)
 				lattice_file << lattice[i][j];
 			else
@@ -866,7 +884,6 @@ void Simulation::saveCompetition() {
 	if (!competition_file.is_open()) {
 			if (id == 0)
 				fprintf(stderr, "Error, could not open competition file to save\n");
-			MPI_Finalize();
 			exit(0);
 	}
 
@@ -1090,9 +1107,8 @@ void Simulation::addDispersal(int i, int j, int s, double t) {
 
 int Simulation::getPersistence() {
 
-	int i, p = 0;
-
-	for (i = 0; i < num_species; i++) {
+	int p = 0;
+	for (int i = 0; i < num_species; i++) {
 		if (species_abundance[i] != 0)
 			p++;
 	}

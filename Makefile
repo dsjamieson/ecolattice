@@ -1,19 +1,25 @@
-# Options are PARALLEL (with MPI) or SERIES (without MPI)
-TYPE=PARALLEL
+# Options are MPI, OMP, (both parallel) or SERIES (not parallel)
+TYPE=MPI
 # Installation directory
 INSTALLDIR=bin
  
-ifeq ($(TYPE), PARALLEL)
+ifeq ($(TYPE), MPI)
 	# MPI c++ compiler
 	CXX=mpic++ 
-	SOURCE=$(wildcard src/parallel/*.cpp)
+	CXXFLAGS=-std=c++11
+	SOURCE=$(wildcard src/mpi/*.cpp)
+else ifeq ($(TYPE), OMP)
+	# c++ compiler
+	CXX=g++ 
+	CXXFLAGS=-O3 -msse3 -fpermissive -fopenmp -std=c++11
+	SOURCE=$(wildcard src/omp/*.cpp)
 else ifeq ($(TYPE), SERIES)
 	# c++ compiler
 	CXX=g++ 
+	CXXFLAGS=-std=c++11
 	SOURCE=$(wildcard src/series/*.cpp)
 endif
 
-CXXFLAGS=-std=c++11
 EXEC=ecolattice
 
 all: ecolattice
