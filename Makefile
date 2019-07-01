@@ -1,5 +1,5 @@
 # Options are MPI, OMP, (both parallel) or SERIES (not parallel)
-TYPE=MPI
+TYPE=OMP
 # Installation directory
 INSTALLDIR=bin
  

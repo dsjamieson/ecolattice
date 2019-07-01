@@ -287,7 +287,7 @@ void Simulation::initializeRandomSimulation() {
 }
 
 void Simulation::initializeReplicateSimulation() {
-a	/* method used to start a new simulation with the same random parameters, used for replicates.
+	/* method used to start a new simulation with the same random parameters, used for replicates.
 	uses competition matrices, fecundities, occupancies, etc. from file, specified in 
 	"CompetitionFile." replicates have the same parameters, but are different realizations
 	(i.e., dynamics will differ). */
@@ -323,6 +323,7 @@ void Simulation::initializeRestartSimulation() {
 	// load seeds from competition file and sends to RNG
 	loadSeeds();
 	seedGenerator();
+	fprintf(stdout, "seedGenerator in Restart %u %u %u\n", seeds[0], seeds[1], seeds[2]);
 	// load dispersal from file
 	loadDispersal();
 	// read in Delta from parameter file and all other parameters from competition file
