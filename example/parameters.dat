@@ -6,7 +6,7 @@ GerminationProbability = 0.3	# Probability for germination to occur at a site fo
 OutfileBase = test		# Initial string in output filenames
 OutfileDir = test_dir		# Directory for output files
 Delta = 1 			# Neighborhood size parameter for each species, must be positive integer
-MinPersistence = 5		# Minimum number of extant species before simultion restarts itself
+MinPersistence = 2		# Minimum number of extant species before simultion restarts itself
 CompetitionFile = 		# Filename for competition used for restart or replicates
 RestartTime = 			# Time step read in to restart a simulation
 
