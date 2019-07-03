@@ -14,7 +14,6 @@
 void Simulation::seedGenerator(std::mt19937& this_random_generator) {
 	/* create a random vector of seeds (a seed sequence) given the seeds specified randomly or in
 	the parameter file (restart simulation). seeds fed to the global RNG. */
-	fprintf(stdout, "seedGeneratorOMP %u %u %u\n", seeds[0], seeds[1], seeds[2]);
     std::seed_seq seq(seeds, seeds + 5);
 	std::vector<std::uint32_t> seed_vector(std::mt19937::state_size);
     seq.generate(seed_vector.begin(), seed_vector.end());
@@ -44,10 +43,9 @@ unsigned long long Simulation::getMaxRandomCount() {
 void Simulation::updateSingleSite(int i, int j, unsigned long long& this_random_count, std::mt19937& this_random_generator) {
 	/* this method runs through all processes, including germination, survival, growth, reproduction, and death,
 	for a single site in the lattice. workers use this method to update their local copies of 'next_lattice' and 'next_dispersal_lattice' */
-	std::chrono::steady_clock::time_point t_start = std::chrono::steady_clock::now();
 
-	int k, l, kp, lp, pathway = 0;
-	unsigned long long start_random_count = random_count;
+	int k, l, kp, lp = 0;
+	unsigned long long start_random_count = this_random_count;
 
 	int this_delta = 0;
 	int this_species = 0;
@@ -84,7 +82,6 @@ void Simulation::updateSingleSite(int i, int j, unsigned long long& this_random_
 
 		if (germ_dist(generateRandom(this_random_count, this_random_generator))) {
 
-			pathway++;
 			std::discrete_distribution<int> species_dist(dispersal_lattice[i][j], dispersal_lattice[i][j] + num_species);
 			l = abs(species_dist(generateRandom(this_random_count, this_random_generator)));
 			next_lattice[i][j] = -(l + 1);
@@ -101,7 +98,6 @@ void Simulation::updateSingleSite(int i, int j, unsigned long long& this_random_
 	}
 	else {
 
-		pathway++;
 		// if the site is not open, determine whether it's occupied by a juvenile or an adult
 		this_stage = lattice[i][j] / abs(lattice[i][j]);
 		// the individual survives with stage-specific probability
@@ -119,7 +115,6 @@ void Simulation::updateSingleSite(int i, int j, unsigned long long& this_random_
 		// if species survives, it persists to next time step
 		if (survival_dist(generateRandom(this_random_count, this_random_generator))) {
 
-			pathway++;
 			next_lattice[i][j] = lattice[i][j];
 
 			// determine abundance of each species in the neighborhood of the focal individual
@@ -165,7 +160,6 @@ void Simulation::updateSingleSite(int i, int j, unsigned long long& this_random_
 			// if focal individual is a juvenile, it will grow to become an adult with a probability dependent on competition with individuals in its neighborhood
 			// depends on the growth competition matrix, which dictates these interactions. the maximum probability is set as a parameter (never a 100% chance of growing)
 			if (this_stage < 0) {
-				pathway++;
 				for (k = 0; k < num_species; k++)
 					growth_probability += competition_growth[this_species - 1][k] * ((double) neighborhood_abundance[k]) / ((double) total_abundance);
 				growth_probability = this_maximum_competition * exp(growth_probability);
@@ -179,7 +173,6 @@ void Simulation::updateSingleSite(int i, int j, unsigned long long& this_random_
 				}
 			}
 			else {
-				pathway+=2;
 				// if focal individual is an adult, it will reproduce with a fecundity based on competition with individuals in its neighborhood
 				if (total_abundance != 0) {
 					for (k = 0; k < num_species; k++)
@@ -273,7 +266,6 @@ void Simulation::updateSingleSite(int i, int j, unsigned long long& this_random_
 			delete[] neighborhood_abundance;
 		}
 		else {
-			pathway++;
 			// focal individual dies
 			next_lattice[i][j] = 0;
 			#pragma omp critical
@@ -282,14 +274,7 @@ void Simulation::updateSingleSite(int i, int j, unsigned long long& this_random_
 	}
 
 	// no matter what happened in this site, a total of four random numbers will be discarded (the maximum number of random numbers used in the simulation)
-	discardRandom(((unsigned long long) 4 - (random_count - start_random_count)), this_random_count, this_random_generator);
-
-	std::chrono::steady_clock::time_point t_end = std::chrono::steady_clock::now();
-	std::chrono::duration<double, std::milli> duration = (t_end - t_start) / 1000.;
-	if (i < 10 && j < 10) {
-		#pragma omp critical
-		fprintf(stdout, "    Done site %d, %d. Pathway %d in %.4e seconds\n", i, j, pathway, duration);
-	}
+	discardRandom(((unsigned long long) 4 - (this_random_count - start_random_count)), this_random_count, this_random_generator);
 
 	return;
 

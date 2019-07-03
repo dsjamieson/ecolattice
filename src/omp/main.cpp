@@ -67,11 +67,14 @@ int main(int argc, char* argv[]) {
 		#pragma omp parallel for
 		for (int i = 0; i < lattice_size; i++) {
 			for (int j = 0; j < lattice_size; j++) {
+
 				// RNG discards values so that the simulations are repeatable
-				sim.discardRandom(((unsigned long long) (4 * lattice_size * lattice_size * (time_step - 1) + 4 * (j + lattice_size * i))) - sim.getRandomCount(), 
+				sim.discardRandom(((unsigned long long) (4 * lattice_size * lattice_size * (time_step - 1) + 4 * (j + lattice_size * i))) - this_random_count, 
 									this_random_count, this_random_generator);
 				// update single site in 'next_lattice' and 'next_dispersal_lattice'
+
 				sim.updateSingleSite(i, j, this_random_count, this_random_generator);
+
 			}
 		}
 		
@@ -87,6 +90,14 @@ int main(int argc, char* argv[]) {
 			sim.saveLattice(0);
 			persistence = 0;
 			time_step = 0;
+
+			#pragma omp parallel 
+			{
+				sim.seedGenerator(this_random_generator);
+				sim.discardRandom(sim.getMaxRandomCount(), this_random_count, this_random_generator);
+				this_random_count = sim.getRandomCount();
+			}
+
 			continue;
 		}
 		

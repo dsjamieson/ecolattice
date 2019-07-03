@@ -323,7 +323,6 @@ void Simulation::initializeRestartSimulation() {
 	// load seeds from competition file and sends to RNG
 	loadSeeds();
 	seedGenerator();
-	fprintf(stdout, "seedGenerator in Restart %u %u %u\n", seeds[0], seeds[1], seeds[2]);
 	// load dispersal from file
 	loadDispersal();
 	// read in Delta from parameter file and all other parameters from competition file
@@ -811,12 +810,14 @@ void Simulation::updateSingleSite(int i, int j) {
 	// no matter what happened in this site, a total of four random numbers will be discarded (the maximum number of random numbers used in the simulation)
 	discardRandom(((unsigned long long) 4 - (random_count - start_random_count)));
 
+	/*
 	std::chrono::steady_clock::time_point t_end = std::chrono::steady_clock::now();
 	std::chrono::duration<double, std::milli> duration = (t_end - t_start) / 1000.;
-	if (i < 10 && j < 10) {
+	if (i < -10 && j < -10) {
 		#pragma omp critical
 		fprintf(stdout, "    Done site %d, %d. Pathway %d in %.4e seconds\n", i, j, pathway, duration);
 	}
+	*/
 
 	return;
 }

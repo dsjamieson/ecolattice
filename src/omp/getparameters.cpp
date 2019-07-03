@@ -104,7 +104,6 @@ void Simulation::setRandomSeeds() {
 void Simulation::seedGenerator() {
 	/* create a random vector of seeds (a seed sequence) given the seeds specified randomly or in
 	the parameter file (restart simulation). seeds fed to the global RNG. */
-	fprintf(stdout, "seedGenerator %u %u %u \n", seeds[0], seeds[1], seeds[2]);
     std::seed_seq seq(seeds, seeds + 5);
 	std::vector<std::uint32_t> seed_vector(std::mt19937::state_size);
     seq.generate(seed_vector.begin(), seed_vector.end());

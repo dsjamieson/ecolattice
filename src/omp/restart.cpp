@@ -291,7 +291,6 @@ void Simulation::loadSeeds() {
 		exit(0);
 	}
 	competition_file.close();
-	fprintf(stdout, "loadSeeds  %u %u %u\n", seeds[0], seeds[1], seeds[2]);
 	return;
 }
 
