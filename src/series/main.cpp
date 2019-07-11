@@ -50,10 +50,6 @@ int main(int argc, char* argv[]) {
 		for (i = 0; i < lattice_size; i++) {
 			for (j = 0;j < lattice_size; j++) {
 				// RNG discards values so that the simulations are repeatable
-				if (i == 0 && j == 0) {
-					unsigned long long test = 4 * lattice_size * lattice_size * ((unsigned long long) time_step - 1) + 4 * (j + lattice_size * i);
-					fprintf(stdout, "Starting random count = %llu, %llu\n", test, sim.getRandomCount());
-				}	 
 				sim.discardRandom(4 * lattice_size * lattice_size * ((unsigned long long) time_step - 1) + 4 * (j + lattice_size * i) - sim.getRandomCount());
 				// update single site in 'next_lattice' and 'next_dispersal_lattice'
 				sim.updateSingleSite(i, j);
@@ -83,7 +79,7 @@ int main(int argc, char* argv[]) {
 
 		std::chrono::steady_clock::time_point t_end = std::chrono::steady_clock::now();
 		std::chrono::duration<double, std::milli> duration = (t_end - t_start) / 1000.;
-		fprintf(stdout, "Done step %d of %d in %.2f seconds\n", time_step, max_time_step, duration);
+		fprintf(stdout, "Done step %d of %d in %.4f seconds\n", time_step, max_time_step, duration);
 	}
 	return(0);
 }

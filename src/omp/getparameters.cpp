@@ -346,7 +346,7 @@ void Simulation::getParameter(int *value_array, int n, std::string parameter_nam
 			while (pstrings >> pstring) {
 				if (i == n + 1){
 					if (id == 0)
-						fprintf(stderr, "Error, Number values for %s must be 1 or number of species\n", parameter_name.c_str());
+						fprintf(stderr, "Error, Number of values for parameter %s must be 1 or number of species\n", parameter_name.c_str());
 					exit(0);
 				}
 

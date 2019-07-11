@@ -399,10 +399,15 @@ void Simulation::loadCompetition() {
 				}
 			}
 
-			if(col_num < num_species)
+			if (col_num < num_species)
 				value = value.substr(0, value.size() - 1);
+			
+			if (value[0] == '-') {
+				fprintf(stderr, "Error, negative value given for competition file line %d column %d\n", line_num, col_num);
+				exit(0);
+			}
 
-			if (value.find_first_not_of("0123456789.") == std::string::npos) {
+			if (value.find_first_not_of("0123456789.e-") == std::string::npos) {
 
 				try {
 					parameters[(line_num - 4) / 2][col_num - 1] = stod(value);
@@ -463,10 +468,10 @@ void Simulation::loadCompetition() {
 					exit(0);
 				}			
 
-				if(col_num < num_species)
+				if (col_num < num_species)
 					value = value.substr(0, value.size() - 1);
 
-				if (value.find_first_not_of("-0123456789.") == std::string::npos) {
+				if (value.find_first_not_of("-0123456789.e") == std::string::npos) {
 					try {
 						competition_fecundity[line_num - 18][col_num - 1] = stod(value);
 					}
@@ -524,7 +529,7 @@ void Simulation::loadCompetition() {
 				if(col_num < num_species)
 					value = value.substr(0, value.size() - 1);
 
-				if (value.find_first_not_of("-0123456789.") == std::string::npos) {
+				if (value.find_first_not_of("-0123456789.e") == std::string::npos) {
 
 						try {
 							competition_growth[line_num - 19 - num_species][col_num - 1] = stod(value);

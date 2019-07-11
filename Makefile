@@ -1,5 +1,5 @@
 # Options are MPI, OMP, (both parallel) or SERIES (not parallel)
-TYPE=OMP
+TYPE=SERIES
 # Installation directory
 INSTALLDIR=bin
  
@@ -36,4 +36,5 @@ uninstall:
 
 clean:
 	rm -f $(EXEC)
+
 

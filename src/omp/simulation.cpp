@@ -120,7 +120,6 @@ Simulation::Simulation(std::string filename, int p_id) {
 
 	// RNG is set to jump ahead to the maximum number of random draws that could have already been used by the RNG when initializing the simulation
 	max_random_count = 1000. * (4. * num_species * num_species + 5. * lattice_size * (unsigned long long) lattice_size);
-	fprintf(stdout, "	in Simulation random_count = %d, max_random_count = %llu\n", random_count, max_random_count);
 
 	if (random_count > max_random_count) {
 		if (id == 0)
@@ -129,9 +128,9 @@ Simulation::Simulation(std::string filename, int p_id) {
 		exit(0);
 	}
 	discardRandom(max_random_count - random_count);
-	fprintf(stdout, "	in Simulation random_count = %d, max_random_count = %llu\n", random_count, max_random_count);
 
 	random_count = 0;  // reset random count before simulation begins
+
 }
 
 
@@ -232,15 +231,20 @@ void Simulation::initializeRandomSimulation() {
 	getParameter(&fecundity_growth_relative_hierarchy, "RelativeHierarchy", 0);
 	if (fabs(fecundity_growth_relative_hierarchy) != 1. && fecundity_growth_relative_hierarchy != 0.) {
 		if (id == 0)
-			fprintf(stderr, "Error, RelativeHierarchy must be +/-1 (equal/inverted), or 0 (unrelated)\n");
+			fprintf(stderr, "Error, RelativeHierarchy must be +/-1 (equal/inverted), or 0 (independent)\n");
 		exit(0);
 	}
 	if (fecundity_growth_relative_hierarchy != 0 && (fecundity_transitivity_type == 0 || growth_transitivity_type == 0)) {
 		if (id == 0)
-			fprintf(stderr, "Error, if RelativeHierarchy is not zero, neither FecundityTransitive nor GrowthTransitivity can be zero\n");
+			fprintf(stderr, "Error, if RelativeHierarchy is not zero, neither FecundityTransitivity nor GrowthTransitivity can be zero\n");
 		exit(0);
 	}
-	if ((competition_correlation!=0) + (imbalance!=0.5) + ((fabs(fecundity_transitivity_type) + fabs(growth_transitivity_type)) != 0) > 1) {
+	if (fecundity_growth_relative_hierarchy != 0 && (fecundity_transitivity_type != growth_transitivity_type)) {
+		if (id == 0)
+			fprintf(stderr, "Error, if RelativeHierarchy is not zero, FecundityTransitivity and GrowthTransitivity must be equal\n");
+		exit(0);
+	}
+	if ((competition_correlation != 0) + (imbalance != 0.5) + ((fabs(fecundity_transitivity_type) + fabs(growth_transitivity_type)) != 0) > 1) {
 		if (id == 0)
 			fprintf(stderr, "Error, only one of CompetitionCorr, Imbalance, and (Fecundity/Growth)Transitivity can be set\n");
 		exit(0);
@@ -277,7 +281,6 @@ void Simulation::initializeRandomSimulation() {
 
 	// RNG discard after drawing random parameters, as some use rejection sampling
 	unsigned long long max_random_count = 1000. * (4. * num_species * (unsigned long long) num_species);
-	fprintf(stdout, "	in Simulation, method initializeRandomSimulation, random_count = %llu, max_random_count = %llu\n", random_count, max_random_count);
 
 	if (random_count > max_random_count) {
 		if (id == 0)
@@ -307,7 +310,6 @@ void Simulation::initializeReplicateSimulation() {
 
 	// RNG discard after loading random parameters, as some used rejection sampling
 	unsigned long long max_random_count = 1000. * (4. * num_species * (unsigned long long) num_species);
-	fprintf(stdout, "	in Simulation, method initializeReplicateSimulation, random_count = %llu, max_random_count = %llu\n", random_count, max_random_count);
 
 	if (random_count > max_random_count) {
 		if (id == 0)
@@ -330,7 +332,6 @@ void Simulation::initializeRestartSimulation() {
 
 	// load seeds from competition file and sends to RNG
 	loadSeeds();
-	fprintf(stdout, "seeds RestartSimulation %u %u %u %u\n", seeds[0], seeds[1], seeds[2], seeds[3]);
 	seedGenerator();
 	// load dispersal from file
 	loadDispersal();
@@ -379,13 +380,8 @@ void Simulation::reinitializeSimulation(int time_step) {
 	getDiscreteTransitivity();
 	getFecundityGrowthCorrelation();
 
-	fprintf(stdout, "before\n");
-	int test = getPersistence();
-	fprintf(stdout, "after\n");
-
 	// RNG is set to jump ahead to the maximum number of random draws that could have already been used by the RNG when initializing the simulation
 	unsigned long long max_random_count = 1000. * (4. * num_species * num_species + 5. * lattice_size * (unsigned long long) lattice_size);
-	fprintf(stdout, "test in Simulation, method reinitializeSimulation, random_count = %llu, max_random_count = %llu\n", random_count, max_random_count);
 
 	if (random_count > max_random_count) {
 		if (id == 0)
@@ -535,8 +531,10 @@ void Simulation::getSpeciesAbundance() {
 	for (int i = 0; i < lattice_size; i++) {
 		for (int j = 0; j < lattice_size; j++) {
 			int s = abs(lattice[i][j]);
-			if (s != 0)
+			if (s != 0) {
+				#pragma omp atomic
 				species_abundance[s - 1]++;
+			}
 		}
 	}
 	return;
@@ -773,7 +771,7 @@ void Simulation::updateSingleSite(int i, int j) {
 								i2 += lattice_size;
 							int j1 = (j + l) % lattice_size;
 							int j2 = (j - l) % lattice_size;
-							if( j2 < 0)
+							if (j2 < 0)
 								j2 += lattice_size;
 							next_dispersal_lattice[i][j1][this_species - 1] += this_fecundity * distance_probability[k][l - 1] / distance_probability_sum;
 							next_dispersal_lattice[i][j2][this_species - 1] += this_fecundity * distance_probability[k][l - 1] / distance_probability_sum;
@@ -811,7 +809,6 @@ void Simulation::updateSingleSite(int i, int j) {
 
 	// no matter what happened in this site, a total of four random numbers will be discarded (the maximum number of random numbers used in the simulation)
 	discardRandom(((unsigned long long) 4 - (random_count - start_random_count)));
-	fprintf(stdout, "	in Simulation, method updateSingleSite, random_count = %llu\n", random_count);
 	return;
 }
 
@@ -1104,11 +1101,13 @@ int Simulation::getPersistence() {
 
 	int p = 0;
 	for (int i = 0; i < num_species; i++) {
-		fprintf(stdout, "species %d abundance %d\n", i + 1, species_abundance[i]); 
 		if (species_abundance[i] != 0)
 			p++;
+		if (species_abundance[i] < 0) {
+			fprintf(stderr, "Error, negative abundance for species %d\n", i + 1);
+ 			exit(-1);
+		}
 	}
-	fprintf(stdout, "persistence %d\n", p);
 	return p;
 }
 

@@ -106,7 +106,7 @@ Simulation::Simulation(std::string filename, int p_id) {
 	allocSimulation();
 
 	if (restart_time != 0) {
-		// continue a previous failed simulation or extend a previous simulation (repeat simulation)
+		// continue a previous failed simulation or extend a previous simulation (restart/repeat simulation)
 		initializeRestartSimulation();
 	}
 	else if (competition_filename.size() != 0) {
@@ -125,7 +125,7 @@ Simulation::Simulation(std::string filename, int p_id) {
 	getFecundityGrowthCorrelation();
 
 	// RNG is set to jump ahead to the maximum number of random draws that could have already been used by the RNG when initializing the simulation
-	unsigned long long max_random_count =  (unsigned long long) 1000. * (4. * num_species * num_species + 5. * lattice_size * lattice_size);
+	unsigned long long max_random_count = 1000. * (4. * num_species * num_species + 5. * lattice_size * (unsigned long long) lattice_size);
 	if (random_count > max_random_count) {
 		if (id == 0)
 			fprintf(stderr, "Error, too many random numbers used to generate initial conditions.\n");
@@ -245,17 +245,24 @@ void Simulation::initializeRandomSimulation() {
 	getParameter(&fecundity_growth_relative_hierarchy, "RelativeHierarchy", 0);
 	if (fabs(fecundity_growth_relative_hierarchy) != 1. && fecundity_growth_relative_hierarchy != 0.) {
 		if (id == 0)
-			fprintf(stderr, "Error, RelativeHierarchy must be +/-1 (equal/inverted), or 0 (unrelated)\n");
+			fprintf(stderr, "Error, RelativeHierarchy must be +/-1 (equal/inverted), or 0 (independent)\n");
 		MPI_Finalize();
 		exit(0);
 	}
 	if (fecundity_growth_relative_hierarchy != 0 && (fecundity_transitivity_type == 0 || growth_transitivity_type == 0)) {
 		if (id == 0)
-			fprintf(stderr, "Error, if RelativeHierarchy is not zero, neither FecundityTransitive nor GrowthTransitivity can be zero\n");
+			fprintf(stderr, "Error, if RelativeHierarchy is not zero, neither FecundityTransitivity nor GrowthTransitivity can be zero\n");
 		MPI_Finalize();
 		exit(0);
 	}
-	if ((competition_correlation!=0) + (imbalance!=0.5) + ((fabs(fecundity_transitivity_type) + fabs(growth_transitivity_type)) != 0) > 1) {
+	if (fecundity_growth_relative_hierarchy != 0 && (fecundity_transitivity_type != growth_transitivity_type)) {
+		if (id == 0)
+			fprintf(stderr, "Error, if RelativeHierarchy is not zero, FecundityTransitivity and GrowthTransitivity must be equal\n");
+		MPI_Finalize();
+		exit(0);
+	}
+
+	if ((competition_correlation != 0) + (imbalance != 0.5) + ((fabs(fecundity_transitivity_type) + fabs(growth_transitivity_type)) != 0) > 1) {
 		if (id == 0)
 			fprintf(stderr, "Error, only one of CompetitionCorr, Imbalance, and (Fecundity/Growth)Transitivity can be set\n");
 		MPI_Finalize();
@@ -317,7 +324,7 @@ void Simulation::initializeReplicateSimulation() {
 	// send seeds to RNG
 	seedGenerator();
 
-	// read in delta (competition distance) from parameter file and all other parameters from competition file
+	// read in Delta from parameter file and all other parameters from competition file
 	getParameter(delta, num_species, "Delta", 2);
 	loadCompetition();
 
@@ -396,7 +403,7 @@ void Simulation::reinitializeSimulation(int time_step) {
 	getFecundityGrowthCorrelation();
 
 	// RNG is set to jump ahead to the maximum number of random draws that could have already been used by the RNG when initializing the simulation
-	unsigned long long max_random_count = (unsigned long long) 1000. * (4. * num_species * num_species + 5. * lattice_size * lattice_size);
+	unsigned long long max_random_count = 1000. * (4. * num_species * num_species + 5. * lattice_size * (unsigned long long) lattice_size);
 	if (random_count > max_random_count) {
 		if (id == 0)
 			fprintf(stderr, "Error, too many random numbers used to generate initial conditions.\n");
@@ -1142,6 +1149,12 @@ int Simulation::getPersistence() {
 	int i, p = 0;
 
 	for (i = 0; i < num_species; i++) {
+		if (species_abundance[i] < 0) {
+			if (id == 0)
+				fprintf(stderr, "Error, negative abundance for species %d\n", i + 1);
+			MPI_Finalize();
+			exit(-1);
+		}
 		if (species_abundance[i] != 0)
 			p++;
 	}

@@ -510,7 +510,7 @@ void Simulation::getParameter(double *value_array, int n, std::string parameter_
 			}				
 			else if (i != n && i!= 0){
 				if (id == 0)
-					fprintf(stderr, "Error, Number values for %s must be 1 or Species\n", parameter_name.c_str());
+					fprintf(stderr, "Error, Number of values for parameter %s must be 1 or Species\n", parameter_name.c_str());
 				exit(0);
 			}
 			set = 1;

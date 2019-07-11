@@ -46,8 +46,6 @@ class Simulation {
 		void setRandomSeeds();
 		void reinitializeSimulation(int time_step);
 
-		std::mt19937& generateRandom();
-
 	private:
 
 		// Lattice, dispersal, and time step parameters
@@ -86,6 +84,7 @@ class Simulation {
 		void loadCompetition();
 
 		// Allocation and random seed
+		std::mt19937& generateRandom();
 		unsigned int getRandom();
 		void allocSimulation();
 		void initializeLattice();

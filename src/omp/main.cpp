@@ -4,9 +4,9 @@
 	 *						D.S Jamieson and N.L Kinlock, 2018			
 	 *
 	 *	 this is the main body of the simulation program to run
-	 *	 with OMP. the maximum number of cores are used to
-	 *	 distribute threads, which work through the lattice 
-	 *	 in parallel. this works only with one node.
+	 *	 with OMP. ten threads are initialized, and each 
+	 *	 thread works through the lattice in parallel. 
+	 *	 may only be used with one node.
 	 *
 	 ***********************************************************/
 
@@ -72,11 +72,6 @@ int main(int argc, char* argv[]) {
 			int i = index / lattice_size;
 			int j = index - i * lattice_size;
 
-			if (index == 0) {
-				unsigned long long test = 4 * lattice_size * lattice_size * ((unsigned long long) time_step - 1) + 4 * (j + lattice_size * i);
-				fprintf(stdout, "Time step cast = %llu, Starting random count = %llu, %llu\n", (unsigned long long) time_step,  test, this_random_count);
-			} 
-
 			// RNG discards values so that the simulations are repeatable
 			sim.discardRandom(4 * lattice_size * lattice_size * ((unsigned long long) time_step - 1) + 4 * (j + lattice_size * i) - this_random_count, 
 								this_random_count, this_random_generator);
@@ -90,7 +85,7 @@ int main(int argc, char* argv[]) {
 		// if persistence is below the minimum allowed persistence, new random seeds are drawn and the simulation is reinitialized
 		// the new initial state of the simulation is saved
 		if (persistence < min_persistence) {
-			fprintf(stdout, "Too many extinctions, reinitializing\n");
+			fprintf(stdout, "\n\nToo many extinctions, reinitializing\n\n");
 			sim.setRandomSeeds();
 			sim.reinitializeSimulation(time_step);
 			sim.saveCompetition();
@@ -117,7 +112,7 @@ int main(int argc, char* argv[]) {
 
 		std::chrono::steady_clock::time_point t_end = std::chrono::steady_clock::now();
 		std::chrono::duration<double, std::milli> duration = (t_end - t_start) / 1000.;
-		fprintf(stdout, "Done step %d of %d in %.2f seconds\n", time_step, max_time_step, duration);
+		fprintf(stdout, "Done step %d of %d in %.4f seconds\n", time_step, max_time_step, duration);
 
 	}
 	return(0);

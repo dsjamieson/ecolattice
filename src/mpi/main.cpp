@@ -192,7 +192,7 @@ int main(int argc, char* argv[]) {
 
 				std::chrono::steady_clock::time_point t_end = std::chrono::steady_clock::now();
 				std::chrono::duration<double, std::milli> duration = (t_end - t_start) / 1000.;
-				fprintf(stdout, "Done step %d of %d in %.2f seconds\n", time_step, max_time_step, duration);
+				fprintf(stdout, "Done step %d of %d in %.4f seconds\n", time_step, max_time_step, duration);
 			}
 		}
 
