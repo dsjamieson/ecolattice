@@ -318,22 +318,22 @@ int main(int argc, char* argv[]) {
 					species_extant[i] = 0;
 				
 				std::chrono::steady_clock::time_point t_update_buffer = std::chrono::steady_clock::now();
-				if (myid == 1) {
+				/*if (myid == 1) {
 					std::chrono::duration<double, std::milli> duration = (t_zero_buffer - t_start) / 1000.;
-					fprintf(stdout, "Zeroed buffer in %.4f seconds\n", duration);
+					fprintf(stdout, "		Zeroed buffer in %.4f seconds\n", duration);
 					duration = (t_sites - t_zero_buffer) / 1000.;
-					fprintf(stdout, "Updated sites in %.4f seconds\n", duration);
+					fprintf(stdout, "		Updated sites in %.4f seconds\n", duration);
 					duration = (t_fill_buffer - t_sites) / 1000.;
-					fprintf(stdout, "Filled buffer in %.4f seconds\n", duration);
+					fprintf(stdout, "		Filled buffer in %.4f seconds\n", duration);
 					duration = (t_send_buffer - t_fill_buffer) / 1000.;
-					fprintf(stdout, "Sent buffer in %.4f seconds\n", duration);
+					fprintf(stdout, "		Sent buffer in %.4f seconds\n", duration);
 					duration = (t_rcv_buffer - t_send_buffer) / 1000.;
-					fprintf(stdout, "Received buffer in %.4f seconds\n", duration);
+					fprintf(stdout, "		Received buffer in %.4f seconds\n", duration);
 					duration = (t_update_buffer - t_rcv_buffer) / 1000.;
-					fprintf(stdout, "Updated buffer in %.4f seconds\n", duration);
+					fprintf(stdout, "		Updated buffer in %.4f seconds\n", duration);
 					duration = (t_update_buffer - t_start) / 1000.;
 					fprintf(stdout, "Time step complete in %.4f seconds\n", duration);
-				}
+				}*/
 			}
 		}
 		

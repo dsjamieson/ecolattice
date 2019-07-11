@@ -379,9 +379,13 @@ void Simulation::reinitializeSimulation(int time_step) {
 	getDiscreteTransitivity();
 	getFecundityGrowthCorrelation();
 
+	fprintf(stdout, "before\n");
+	int test = getPersistence();
+	fprintf(stdout, "after\n");
+
 	// RNG is set to jump ahead to the maximum number of random draws that could have already been used by the RNG when initializing the simulation
 	unsigned long long max_random_count = 1000. * (4. * num_species * num_species + 5. * lattice_size * (unsigned long long) lattice_size);
-	fprintf(stdout, "	in Simulation, method reinitializeSimulation, random_count = %llu, max_random_count = %llu\n", random_count, max_random_count);
+	fprintf(stdout, "test in Simulation, method reinitializeSimulation, random_count = %llu, max_random_count = %llu\n", random_count, max_random_count);
 
 	if (random_count > max_random_count) {
 		if (id == 0)
@@ -1100,9 +1104,11 @@ int Simulation::getPersistence() {
 
 	int p = 0;
 	for (int i = 0; i < num_species; i++) {
+		fprintf(stdout, "species %d abundance %d\n", i + 1, species_abundance[i]); 
 		if (species_abundance[i] != 0)
 			p++;
 	}
+	fprintf(stdout, "persistence %d\n", p);
 	return p;
 }
 
