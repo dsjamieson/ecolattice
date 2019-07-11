@@ -222,9 +222,12 @@ int main(int argc, char* argv[]) {
 				for (this_site = task_site_number[myid - 1]; this_site < task_site_number[myid]; this_site++) {
 					i = this_site / lattice_size;
 					j = this_site - i * lattice_size;
-
+					if (i == 0 && j == 0) {
+						unsigned long long test = 4 * lattice_size * lattice_size * ((unsigned long long) time_step - 1) + 4 * (j + lattice_size * i);
+						fprintf(stdout, "Starting random count = %llu, %llu\n", test, sim.getRandomCount());
+					}	
 					// RNG discards values so that the simulations are repeatable
-					sim.discardRandom((((unsigned long long) (4 * lattice_size * lattice_size * (time_step - 1) + 4 * (j + lattice_size * i))) - (sim.getRandomCount())));
+					sim.discardRandom(4 * lattice_size * lattice_size * ((unsigned long long) time_step - 1) + 4 * (j + lattice_size * i) - sim.getRandomCount());
 					
 					// worker updates single site in 'next_lattice' and 'next_dispersal_lattice'
 					sim.updateSingleSite(i, j);
@@ -373,7 +376,7 @@ int main(int argc, char* argv[]) {
 			for (i = 0; i < lattice_size; i++) {
 				for (j = 0;j < lattice_size; j++) {
 					// RNG discards values so that the simulations are repeatable
-					sim.discardRandom(((unsigned long long) (4 * lattice_size * lattice_size * (time_step - 1) + 4 * (j + lattice_size * i))) - sim.getRandomCount());
+					sim.discardRandom(4 * lattice_size * lattice_size * ((unsigned long long) time_step - 1) + 4 * (j + lattice_size * i) - sim.getRandomCount());
 					// update single site in 'next_lattice' and 'next_dispersal_lattice'
 					sim.updateSingleSite(i, j);
 				}

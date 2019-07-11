@@ -125,7 +125,7 @@ Simulation::Simulation(std::string filename, int p_id) {
 	getFecundityGrowthCorrelation();
 
 	// RNG is set to jump ahead to the maximum number of random draws that could have already been used by the RNG when initializing the simulation
-	unsigned long long max_random_count = (unsigned long long) 1000. * (4. * num_species * num_species + 5. * lattice_size * lattice_size);
+	unsigned long long max_random_count =  (unsigned long long) 1000. * (4. * num_species * num_species + 5. * lattice_size * lattice_size);
 	if (random_count > max_random_count) {
 		if (id == 0)
 			fprintf(stderr, "Error, too many random numbers used to generate initial conditions.\n");
@@ -841,9 +841,9 @@ void Simulation::updateSingleSite(int i, int j) {
 
 	std::chrono::steady_clock::time_point t_end = std::chrono::steady_clock::now();
 	std::chrono::duration<double, std::milli> duration = (t_end - t_start) / 1000.;
-	if (i < 10 && j < 10) {
+	/* if (i < 10 && j < 10) {
 		fprintf(stdout, "    Done site %d, %d. Pathway %d in %.4e seconds\n", i, j, pathway, duration);
-	}
+	} */
 	return;
 }
 

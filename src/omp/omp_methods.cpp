@@ -13,7 +13,7 @@
 
 void Simulation::seedGenerator(std::mt19937& this_random_generator) {
 	/* create a random vector of seeds (a seed sequence) given the seeds specified randomly or in
-	the parameter file (restart simulation). seeds fed to the global RNG. */
+	the parameter file (for restarted simulations). seeds fed to the global RNG. */
     std::seed_seq seq(seeds, seeds + 5);
 	std::vector<std::uint32_t> seed_vector(std::mt19937::state_size);
     seq.generate(seed_vector.begin(), seed_vector.end());
@@ -81,19 +81,14 @@ void Simulation::updateSingleSite(int i, int j, unsigned long long& this_random_
 		std::bernoulli_distribution germ_dist(1. - pow(1.- germination_probability, total_seeds));
 
 		if (germ_dist(generateRandom(this_random_count, this_random_generator))) {
-
 			std::discrete_distribution<int> species_dist(dispersal_lattice[i][j], dispersal_lattice[i][j] + num_species);
 			l = abs(species_dist(generateRandom(this_random_count, this_random_generator)));
 			next_lattice[i][j] = -(l + 1);
-			#pragma omp critical
+			#pragma omp atomic
 			species_abundance[l]++;
-
 		}
 		else {
-
-			#pragma omp critical
 			next_lattice[i][j] = 0;
-
 		}
 	}
 	else {
@@ -160,9 +155,12 @@ void Simulation::updateSingleSite(int i, int j, unsigned long long& this_random_
 			// if focal individual is a juvenile, it will grow to become an adult with a probability dependent on competition with individuals in its neighborhood
 			// depends on the growth competition matrix, which dictates these interactions. the maximum probability is set as a parameter (never a 100% chance of growing)
 			if (this_stage < 0) {
+
 				for (k = 0; k < num_species; k++)
 					growth_probability += competition_growth[this_species - 1][k] * ((double) neighborhood_abundance[k]) / ((double) total_abundance);
+
 				growth_probability = this_maximum_competition * exp(growth_probability);
+
 				if (growth_probability > this_maximum_competition)
 					growth_probability = this_maximum_competition;
 
@@ -177,16 +175,22 @@ void Simulation::updateSingleSite(int i, int j, unsigned long long& this_random_
 				if (total_abundance != 0) {
 					for (k = 0; k < num_species; k++)
 						this_fecundity += competition_fecundity[this_species - 1][k] * ((double) neighborhood_abundance[k]) / ((double) total_abundance);
+
 					this_fecundity = this_intrinsic_fecundity * exp(this_fecundity);
 				}
 				else {
 					this_fecundity = this_intrinsic_fecundity;
 				}
 
-				// the fecundity (equal to the number of seeds produced by the focal individuals) is spread over the entire matrix
-				// the number of seeds at each site is an exponential function of distance, quickly decaying depending on the dispersal length parameter
+				// fecundity, the number of seeds produced by the focal individuals, is spread over the entire lattice
+				// the number of seeds at each site is an exponential function of Euclidean distance
+				// probability of dispersal quickly decays with distance depending on the dispersal length parameter
+				// dispersal can occur within two times the dispersal length of the species
+				// setting a dispersal limit reduces size of distance_probability array and improves speed		
 				this_max_dispersal = (int) round(2 * dispersal_length[this_species - 1]);
-				distance_probability = new double*[this_max_dispersal + 1];
+				int test_int = this_max_dispersal + 1;
+				distance_probability = new double*[test_int];
+
 				if (!distance_probability) {
 					fprintf(stderr, "Error, distance probability memory allocation failed for site %d %d\n", i, j);	
 					exit(-1);
@@ -198,7 +202,6 @@ void Simulation::updateSingleSite(int i, int j, unsigned long long& this_random_
 						exit(-1);
 					}
 					for (l = 1; l <= this_max_dispersal; l++) {
-
 						double distance_x = (double) k;
 						double distance_y = (double) l;
 						double distance = sqrt(distance_x * distance_x + distance_y * distance_y);
@@ -206,26 +209,23 @@ void Simulation::updateSingleSite(int i, int j, unsigned long long& this_random_
 						if(round(distance) <= this_max_dispersal) {
 							probability = exp(log(this_dispersal_probability) / dispersal_length[this_species - 1] * distance);
 							distance_probability_sum +=	4. * probability;
-						}				
-						
+						}					
 						distance_probability[k][l - 1] = probability;
 					}
 				}
 
 				for (k = 0; k <= this_max_dispersal; k++) {
 					for (l = 1; l <= this_max_dispersal; l++) {
-
-						if(k == 0) {
-
+						if (k == 0) {
 							int i1 = (i + l) % lattice_size;
 							int i2 = (i - l) % lattice_size;
-							if(i2 < 0)
+							if (i2 < 0)
 								i2 += lattice_size;
 							int j1 = (j + l) % lattice_size;
 							int j2 = (j - l) % lattice_size;
-							if(j2 < 0)
+							if (j2 < 0)
 								j2 += lattice_size;
-		
+
 							#pragma omp atomic
 							next_dispersal_lattice[i][j1][this_species - 1] += this_fecundity * distance_probability[k][l - 1] / distance_probability_sum;
 							#pragma omp atomic
@@ -234,17 +234,15 @@ void Simulation::updateSingleSite(int i, int j, unsigned long long& this_random_
 							next_dispersal_lattice[i1][j][this_species - 1] += this_fecundity * distance_probability[k][l - 1] / distance_probability_sum;
 							#pragma omp atomic
 							next_dispersal_lattice[i2][j][this_species - 1] += this_fecundity * distance_probability[k][l - 1] / distance_probability_sum;
-							
 							}
 						else {
-
 							int i1 = (i + k) % lattice_size;
 							int i2 = (i - k) % lattice_size;
-							if(i2 < 0)
+							if (i2 < 0)
 								i2 += lattice_size;
 							int j1 = (j + l) % lattice_size;
 							int j2 = (j - l) % lattice_size;
-							if(j2 < 0)
+							if (j2 < 0)
 								j2 += lattice_size;
 
 							#pragma omp atomic
@@ -255,20 +253,22 @@ void Simulation::updateSingleSite(int i, int j, unsigned long long& this_random_
 							next_dispersal_lattice[i1][j2][this_species - 1] += this_fecundity * distance_probability[k][l - 1] / distance_probability_sum;
 							#pragma omp atomic
 							next_dispersal_lattice[i2][j2][this_species - 1] += this_fecundity * distance_probability[k][l - 1] / distance_probability_sum;
-
 						}
 
 					}
 					delete[] distance_probability[k];
+					distance_probability[k] = nullptr;
 				}
 				delete[] distance_probability;
+				distance_probability = nullptr;
 			}
 			delete[] neighborhood_abundance;
+			neighborhood_abundance = nullptr;
 		}
 		else {
 			// focal individual dies
 			next_lattice[i][j] = 0;
-			#pragma omp critical
+			#pragma omp atomic
 			species_abundance[this_species - 1]--;
 		}
 	}

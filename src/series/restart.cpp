@@ -153,6 +153,18 @@ void Simulation::loadDispersal() {
 				fprintf(stderr, "Error, dispersal file for species %d doesn't begin with comment line\n", k);
 			exit(0);
 		}
+
+		std::istringstream time_check_values(line);
+
+		while (time_check_values >> value) 	
+			continue;
+
+		int check_restart_time = stoi(value);
+		if (restart_time != check_restart_time) {
+			fprintf(stderr, "Error, RestartTime does not match header of dispersal file for species %d\n", k);
+			exit(0);
+		}
+
 		while (getline(dispersal_file, line)) {
 			line_num++;
 			if (line_num > lattice_size) {

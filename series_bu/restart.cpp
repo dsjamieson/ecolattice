@@ -30,7 +30,6 @@ void Simulation::saveDispersal(int time_step) {
 		if (!dispersal_file) {
 			if (id == 0)
 				fprintf(stderr, "Error, could not open dispersal file for species %d to save\n", k);
-			MPI_Finalize();
 			exit(0);
 		}
 
@@ -66,7 +65,6 @@ void Simulation::loadLattice() {
 	if (!lattice_file.is_open()) {
 		if (id == 0)
 			fprintf(stderr, "Error, could not open lattice file for time step %d to load\n", restart_time);
-		MPI_Finalize();
 		exit(0);
 	}
 
@@ -75,7 +73,6 @@ void Simulation::loadLattice() {
 		if (line_num > lattice_size) {
 			if (id == 0)
 				fprintf(stderr, "Error, too many lines in lattice file for time step %d\n", restart_time);
-			MPI_Finalize();
 			exit(0);
 		}
 		
@@ -88,7 +85,6 @@ void Simulation::loadLattice() {
 			if (col_num > lattice_size) {
 				if (id == 0)
 					fprintf(stderr, "Error, too many columns in lattice file for time step %d, line %d\n", restart_time, line_num);
-				MPI_Finalize();
 				exit(0);
 			}
 
@@ -102,28 +98,24 @@ void Simulation::loadLattice() {
 					catch (...) {
 						if (id == 0)
 							fprintf(stderr, "Error, could not convert lattice file value given for time step %d, in line %d column %d, to positive integers\n", restart_time, line_num, col_num);
-						MPI_Finalize();
 						exit(0);
 					}
 			}
 			else {
 				if (id == 0)
 					fprintf(stderr, "Error, invalid lattice file value given for time step %d, in line %d column %d, to positive integers\n", restart_time, line_num, col_num);
-				MPI_Finalize();
 				exit(0);
 			}
 		}
 		if (col_num < lattice_size) {
 			if (id == 0)
 				fprintf(stderr, "Error, not enough columns in lattice file for time step %d, line %d\n", restart_time, line_num);
-			MPI_Finalize();
 			exit(0);
 		}
 	}
 		if (line_num > lattice_size) {
 			if (id == 0)
 				fprintf(stderr, "Error, not enough lines in lattice file for time step %d\n", restart_time);
-			MPI_Finalize();
 			exit(0);
 		}
 
@@ -152,7 +144,6 @@ void Simulation::loadDispersal() {
 		if (!dispersal_file.is_open()) {
 			if (id == 0)
 				fprintf(stderr, "Error, could not open dispersal file for species %d, to load\n", k);
-			MPI_Finalize();
 			exit(0);
 		}
 	
@@ -160,27 +151,13 @@ void Simulation::loadDispersal() {
 		if (trimString(line).size() != 0 ) {
 			if (id == 0)
 				fprintf(stderr, "Error, dispersal file for species %d doesn't begin with comment line\n", k);
-			MPI_Finalize();
 			exit(0);
 		}
-
-		std::istringstream time_check_values(line);
-
-		while (time_check_values >> value) 	
-			continue;
-
-		int check_restart_time = stoi(value);
-		if (restart_time != check_restart_time) {
-			fprintf(stderr, "Error, RestartTime does not match header of dispersal file for species %d\n", k);
-			exit(0);
-		}
-
 		while (getline(dispersal_file, line)) {
 			line_num++;
 			if (line_num > lattice_size) {
 				if (id == 0)
 					fprintf(stderr, "Error, too many lines in dispersal file for species %d\n", k);
-				MPI_Finalize();
 				exit(0);
 			}
 			
@@ -194,7 +171,6 @@ void Simulation::loadDispersal() {
 				if (col_num > lattice_size) {
 					if (id == 0)
 						fprintf(stderr, "Error, too many columns in dispersal file for species %d, line %d\n", k, line_num );
-					MPI_Finalize();
 					exit(0);
 				}
 				
@@ -208,28 +184,24 @@ void Simulation::loadDispersal() {
 						catch (...) {
 							if (id == 0)
 								fprintf(stderr, "Error, could not convert value given for species %d, in line %d column %d, to double\n", k + 1, line_num, col_num);
-							MPI_Finalize();
 							exit(0);
 						}
 				}
 				else {
 					if (id == 0)
 						fprintf(stderr, "Error, invalid dispersal file value given for species %d, in line %d column %d, to double\n", k + 1, line_num, col_num );
-					MPI_Finalize();
 					exit(0);
 				}
 			}
 			if (col_num < lattice_size) {
 				if (id == 0)
 					fprintf(stderr, "Error, not enough columns in dispersal file for species %d, line %d\n", k, line_num );
-				MPI_Finalize();
 				exit(0);
 			}
 		}
 			if (line_num > lattice_size) {
 				if (id == 0)
 					fprintf(stderr, "Error, not enough lines in dispersal file for species %d\n", k);
-				MPI_Finalize();
 				exit(0);
 			}
 
@@ -255,7 +227,6 @@ void Simulation::loadSeeds() {
 	if (!competition_file.is_open()) {
 			if (id == 0)
 				fprintf(stderr, "Error, could not open competition file to load\n");
-			MPI_Finalize();
 			exit(0);
 	}
 
@@ -263,14 +234,12 @@ void Simulation::loadSeeds() {
 		if (trimString(line).size() != 0 ) {
 				if (id == 0)
 					fprintf(stderr, "Error, formatting issue, line 1 in competition file is a not comment\n");
-				MPI_Finalize();
 				exit(0);
 		}
 	}
 	else {
 		if (id == 0)
 			fprintf(stderr, "Error, competition file ends before seeds are loaded\n");
-		MPI_Finalize();
 		exit(0);
 	}
 
@@ -285,7 +254,6 @@ void Simulation::loadSeeds() {
 			if (col_num > 5) {
 				if (id == 0)
 					fprintf(stderr, "Error, competition file must have 5 seeds, too many seeds given\n");
-				MPI_Finalize();
 				exit(0);
 			}
 
@@ -300,14 +268,12 @@ void Simulation::loadSeeds() {
 				catch (...) {
 					if (id == 0)
 						fprintf(stderr, "Error, could not convert value given for competition file column %d to int\n", col_num);
-					MPI_Finalize();
 					exit(0);
 				}
 			}
 			else {
 				if (id == 0)
 					fprintf(stderr, "Error, invalid competition file value given in column %d, to int\n", col_num);
-				MPI_Finalize();
 				exit(0);
 			}
 
@@ -316,14 +282,12 @@ void Simulation::loadSeeds() {
 		if (col_num < 5) {
 			if (id == 0)
 				fprintf(stderr, "Error, competition file must have 5 seeds, too few given\n");
-			MPI_Finalize();
 			exit(0);
 		}
 	}
 	else{
 		if (id == 0)
 			fprintf(stderr, "Error, no seeds in competition file\n");
-		MPI_Finalize();
 		exit(0);
 	}
 	competition_file.close();
@@ -362,7 +326,6 @@ void Simulation::loadCompetition() {
 	if (!competition_file.is_open()) {
 			if (id == 0)
 				fprintf(stderr, "Error, could not open competition file to load\n");
-			MPI_Finalize();
 			exit(0);
 	}
 
@@ -371,21 +334,18 @@ void Simulation::loadCompetition() {
 		if (trimString(line).size() != 0 ) {
 				if (id == 0)
 					fprintf(stderr, "Error, formatting issue, line %d in competition file is a not comment\n", line_num);
-				MPI_Finalize();
 				exit(0);
 		}
 	}
 	else {
 		if (id == 0)
 			fprintf(stderr, "Error, competition file ends before anything is loaded\n");
-		MPI_Finalize();
 		exit(0);
 	}
 
 	if (!getline(competition_file, line)) {
 		if (id == 0)
 			fprintf(stderr, "Error, competition file ends before anything is loaded\n");
-		MPI_Finalize();
 		exit(0);
 	}
 	line_num++;
@@ -397,7 +357,6 @@ void Simulation::loadCompetition() {
 		if (trimString(line).size() != 0) {
 				if (id == 0)
 					fprintf(stderr, "Error, formatting issue, line %d in competition file is not a comment\n", line_num);
-				MPI_Finalize();
 				exit(0);
 		}
 
@@ -412,7 +371,6 @@ void Simulation::loadCompetition() {
 			if (col_num > num_species) {
 				if (id == 0)
 					fprintf(stderr, "Error, too many columns in competition file, line %d\n", line_num);
-				MPI_Finalize();
 				exit(0);
 			}
 
@@ -440,14 +398,12 @@ void Simulation::loadCompetition() {
 				catch (...) {
 					if (id == 0)
 						fprintf(stderr, "Error, could not convert value given for competition file line %d column %d to double\n", line_num, col_num);
-					MPI_Finalize();
 					exit(0);
 				}
 			}
 			else {
 				if (id == 0)
 					fprintf(stderr, "Error, invalid competition file value given in line %d column %d, to double\n", line_num, col_num);
-				MPI_Finalize();
 				exit(0);
 			}
 
@@ -461,7 +417,6 @@ void Simulation::loadCompetition() {
 	if (line_num < 16) {
 		if (id == 0)
 			fprintf(stderr, "Error, not enough lines from species specific parameters in competition file\n");
-		MPI_Finalize();
 		exit(0);
 
 	}
@@ -471,14 +426,12 @@ void Simulation::loadCompetition() {
 		if (trimString(line).size() != 0 ) {
 				if (id == 0)
 					fprintf(stderr, "Error, formatting issue, line %d in competition file is a not comment\n", line_num);
-				MPI_Finalize();
 				exit(0);
 		}
 	}
 	else {
 		if (id == 0)
 			fprintf(stderr, "Error, competition file ends before fecundity competition loaded\n");
-		MPI_Finalize();
 		exit(0);
 	}
 
@@ -495,7 +448,6 @@ void Simulation::loadCompetition() {
 				if (col_num > num_species) {
 					if (id == 0)
 						fprintf(stderr, "Error, too many columns in competition file, line %d\n", line_num);
-					MPI_Finalize();
 					exit(0);
 				}			
 
@@ -509,14 +461,12 @@ void Simulation::loadCompetition() {
 					catch (...) {
 						if (id == 0)
 							fprintf(stderr, "Error, could not convert value given for competition file line %d column %d to double\n", line_num, col_num);
-						MPI_Finalize();
 						exit(0);
 					}
 				}
 				else {
 					if (id == 0)
 						fprintf(stderr, "Error, invalid competition file value given in line %d column %d, to double\n", line_num, col_num);
-					MPI_Finalize();
 					exit(0);
 				}
 			}
@@ -527,7 +477,6 @@ void Simulation::loadCompetition() {
 	if (line_num < 17 + num_species) {
 		if (id == 0)
 			fprintf(stderr, "Error, not enough lines from fecundity competition in competition file, given the number of species\n");
-		MPI_Finalize();
 		exit(0);
 	}
 
@@ -536,14 +485,12 @@ void Simulation::loadCompetition() {
 		if (trimString(line).size() != 0) {
 				if (id == 0)
 					fprintf(stderr, "Error, formatting issue, line %d in competition file is a not comment\n", line_num);
-				MPI_Finalize();
 				exit(0);
 		}
 	}
 	else {
 		if (id == 0)
 			fprintf(stderr, "Error, competition file ends before growth competition loaded\n");
-		MPI_Finalize();
 		exit(0);
 	}
 
@@ -559,7 +506,6 @@ void Simulation::loadCompetition() {
 				if (col_num > num_species) {
 					if (id == 0)
 						fprintf(stderr, "Error, too many columns in competition file, line %d\n", line_num);
-					MPI_Finalize();
 					exit(0);
 				}
 
@@ -574,14 +520,12 @@ void Simulation::loadCompetition() {
 						catch (...) {
 							if (id == 0)
 								fprintf(stderr, "Error, could not convert value given for competition file line %d column %d to double\n", line_num, col_num);
-							MPI_Finalize();
 							exit(0);
 						}
 				}
 				else {
 					if (id == 0)
 						fprintf(stderr, "Error, invalid competition file value given in line %d column %d, to double\n", line_num, col_num);
-					MPI_Finalize();
 					exit(0);
 				}
 			}
@@ -591,7 +535,6 @@ void Simulation::loadCompetition() {
 	if (line_num < 18 + 2 * num_species) {
 		if (id == 0)
 			fprintf(stderr, "Error, not enough lines from growth competition in competition file, given the number of species\n");
-		MPI_Finalize();
 		exit(0);
 
 	}

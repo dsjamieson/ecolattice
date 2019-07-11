@@ -119,7 +119,9 @@ Simulation::Simulation(std::string filename, int p_id) {
 	getFecundityGrowthCorrelation();
 
 	// RNG is set to jump ahead to the maximum number of random draws that could have already been used by the RNG when initializing the simulation
-	max_random_count = (unsigned long long) 1000. * (4. * num_species * num_species + 5. * lattice_size * lattice_size);
+	max_random_count = 1000. * (4. * num_species * num_species + 5. * lattice_size * (unsigned long long) lattice_size);
+	fprintf(stdout, "	in Simulation random_count = %d, max_random_count = %llu\n", random_count, max_random_count);
+
 	if (random_count > max_random_count) {
 		if (id == 0)
 			fprintf(stderr, "Error, too many random numbers used to generate initial conditions.\n");
@@ -127,6 +129,8 @@ Simulation::Simulation(std::string filename, int p_id) {
 		exit(0);
 	}
 	discardRandom(max_random_count - random_count);
+	fprintf(stdout, "	in Simulation random_count = %d, max_random_count = %llu\n", random_count, max_random_count);
+
 	random_count = 0;  // reset random count before simulation begins
 }
 
@@ -272,7 +276,9 @@ void Simulation::initializeRandomSimulation() {
 		setCompetitionTransitivity();
 
 	// RNG discard after drawing random parameters, as some use rejection sampling
-	unsigned long long max_random_count = (unsigned long long) 1000. * (4. * num_species * num_species );
+	unsigned long long max_random_count = 1000. * (4. * num_species * (unsigned long long) num_species);
+	fprintf(stdout, "	in Simulation, method initializeRandomSimulation, random_count = %llu, max_random_count = %llu\n", random_count, max_random_count);
+
 	if (random_count > max_random_count) {
 		if (id == 0)
 			fprintf(stderr, "Error, too many random numbers used to generate competition and parameters.\n");
@@ -300,7 +306,9 @@ void Simulation::initializeReplicateSimulation() {
 	loadCompetition();
 
 	// RNG discard after loading random parameters, as some used rejection sampling
-	unsigned long long max_random_count = (unsigned long long) 1000. * (4. * num_species * num_species );
+	unsigned long long max_random_count = 1000. * (4. * num_species * (unsigned long long) num_species);
+	fprintf(stdout, "	in Simulation, method initializeReplicateSimulation, random_count = %llu, max_random_count = %llu\n", random_count, max_random_count);
+
 	if (random_count > max_random_count) {
 		if (id == 0)
 			fprintf(stderr, "Error, too many random numbers used to generate competition and parameters.\n");
@@ -322,6 +330,7 @@ void Simulation::initializeRestartSimulation() {
 
 	// load seeds from competition file and sends to RNG
 	loadSeeds();
+	fprintf(stdout, "seeds RestartSimulation %u %u %u %u\n", seeds[0], seeds[1], seeds[2], seeds[3]);
 	seedGenerator();
 	// load dispersal from file
 	loadDispersal();
@@ -371,7 +380,9 @@ void Simulation::reinitializeSimulation(int time_step) {
 	getFecundityGrowthCorrelation();
 
 	// RNG is set to jump ahead to the maximum number of random draws that could have already been used by the RNG when initializing the simulation
-	unsigned long long max_random_count = (unsigned long long) 1000. * (4. * num_species * num_species + 5. * lattice_size * lattice_size);
+	unsigned long long max_random_count = 1000. * (4. * num_species * num_species + 5. * lattice_size * (unsigned long long) lattice_size);
+	fprintf(stdout, "	in Simulation, method reinitializeSimulation, random_count = %llu, max_random_count = %llu\n", random_count, max_random_count);
+
 	if (random_count > max_random_count) {
 		if (id == 0)
 			fprintf(stderr, "Error, too many random numbers used to generate initial conditions.\n");
@@ -531,7 +542,6 @@ void Simulation::getSpeciesAbundance() {
 void Simulation::resetLattice() {
 	/* for the current time step, set all elements of the lattice and the dispersal lattice to 0. used in simulation for the first time step (t = 0). */
 
-	#pragma omp parallel for
 	for (int i = 0; i < lattice_size; i++) {
 		for (int j = 0; j < lattice_size; j++) {
 			lattice[i][j] = 0;
@@ -548,7 +558,6 @@ void Simulation::resetNextLattice() {
 	/* for the next time step, set all elements of the lattice and the dispersal lattice to 0. used in simulation so that workers
 	can reset their local copies of 'next_lattice' and 'next_dispersal_lattice' */
 
-	#pragma omp parallel for
 	for (int i = 0; i < lattice_size; i++) {
 		for (int j = 0; j < lattice_size; j++) {
 			next_lattice[i][j] = 0;
@@ -625,11 +634,9 @@ void Simulation::updateSingleSite(int i, int j) {
 			std::discrete_distribution<int> species_dist(dispersal_lattice[i][j], dispersal_lattice[i][j] + num_species);
 			l = abs(species_dist(generateRandom()));
 			next_lattice[i][j] = -(l + 1);
-			#pragma omp critical
 			species_abundance[l]++;
 		}
 		else {
-			#pragma omp critical
 			next_lattice[i][j] = 0;
 		}
 	}
@@ -764,13 +771,9 @@ void Simulation::updateSingleSite(int i, int j) {
 							int j2 = (j - l) % lattice_size;
 							if( j2 < 0)
 								j2 += lattice_size;
-							#pragma omp atomic
 							next_dispersal_lattice[i][j1][this_species - 1] += this_fecundity * distance_probability[k][l - 1] / distance_probability_sum;
-							#pragma omp atomic
 							next_dispersal_lattice[i][j2][this_species - 1] += this_fecundity * distance_probability[k][l - 1] / distance_probability_sum;
-							#pragma omp atomic
 							next_dispersal_lattice[i1][j][this_species - 1] += this_fecundity * distance_probability[k][l - 1] / distance_probability_sum;
-							#pragma omp atomic
 							next_dispersal_lattice[i2][j][this_species - 1] += this_fecundity * distance_probability[k][l - 1] / distance_probability_sum;	
 							}
 						else {
@@ -782,13 +785,9 @@ void Simulation::updateSingleSite(int i, int j) {
 							int j2 = (j - l) % lattice_size;
 							if (j2 < 0)
 								j2 += lattice_size;
-							#pragma omp atomic
 							next_dispersal_lattice[i1][j1][this_species - 1] += this_fecundity * distance_probability[k][l - 1] / distance_probability_sum;
-							#pragma omp atomic
 							next_dispersal_lattice[i2][j1][this_species - 1] += this_fecundity * distance_probability[k][l - 1] / distance_probability_sum;
-							#pragma omp atomic
 							next_dispersal_lattice[i1][j2][this_species - 1] += this_fecundity * distance_probability[k][l - 1] / distance_probability_sum;
-							#pragma omp atomic
 							next_dispersal_lattice[i2][j2][this_species - 1] += this_fecundity * distance_probability[k][l - 1] / distance_probability_sum;
 						}
 					}
@@ -802,23 +801,13 @@ void Simulation::updateSingleSite(int i, int j) {
 			pathway++;
 			// focal individual dies
 			next_lattice[i][j] = 0;
-			#pragma omp critical
 			species_abundance[this_species - 1]--;
 		}
 	}
 
 	// no matter what happened in this site, a total of four random numbers will be discarded (the maximum number of random numbers used in the simulation)
 	discardRandom(((unsigned long long) 4 - (random_count - start_random_count)));
-
-	/*
-	std::chrono::steady_clock::time_point t_end = std::chrono::steady_clock::now();
-	std::chrono::duration<double, std::milli> duration = (t_end - t_start) / 1000.;
-	if (i < -10 && j < -10) {
-		#pragma omp critical
-		fprintf(stdout, "    Done site %d, %d. Pathway %d in %.4e seconds\n", i, j, pathway, duration);
-	}
-	*/
-
+	fprintf(stdout, "	in Simulation, method updateSingleSite, random_count = %llu\n", random_count);
 	return;
 }
 

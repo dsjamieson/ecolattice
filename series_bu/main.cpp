@@ -55,6 +55,14 @@ int main(int argc, char* argv[]) {
 					fprintf(stdout, "Starting random count = %llu, %llu\n", test, sim.getRandomCount());
 				}	 
 				sim.discardRandom(4 * lattice_size * lattice_size * ((unsigned long long) time_step - 1) + 4 * (j + lattice_size * i) - sim.getRandomCount());
+			if (time_step == 12 && i == 0 && j == 0) {
+				std::uniform_real_distribution<double> test_dist(0., 1.);
+				for (i = 0; i < 10; i++) {
+					double test = test_dist(sim.generateRandom());
+					fprintf(stdout, "%f, ", test);
+				}
+				fprintf(stdout, "\n");
+			}
 				// update single site in 'next_lattice' and 'next_dispersal_lattice'
 				sim.updateSingleSite(i, j);
 			}

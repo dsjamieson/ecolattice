@@ -21,13 +21,14 @@ int main(int argc, char* argv[]) {
 
 	// determine number of processors and set thread IDs
 	int nproc = 1;
+	nproc = 10;
+	omp_set_num_threads(nproc);
 	thread_local int my_id;
 	#pragma omp parallel
 	{
-		nproc = omp_get_max_threads();
 		my_id = omp_get_thread_num();
 	}
-	fprintf(stdout, "Running in parallel with %d threads\n", nproc);
+	fprintf(stdout, "Ecolattice running in parallel (OMP) with %d threads\n", nproc);
 
 	int lattice_size, time_step, start_time, max_time_step;
 	int persistence, min_persistence;
@@ -36,6 +37,7 @@ int main(int argc, char* argv[]) {
 	// requires file name with list of parameters
 	Simulation sim(argv[1], 0);
 	// each thread gets a copy of the same RNG
+	// random count initialized to zero
 	thread_local std::mt19937 this_random_generator;
 	thread_local unsigned long long this_random_count = 0;
 	#pragma omp parallel 
@@ -46,9 +48,9 @@ int main(int argc, char* argv[]) {
 	}
 
 	lattice_size = sim.getLatticeSize();  // number of cells in one dimension of the lattice
-	start_time = sim.getRestartTime() + 1;
+	start_time = sim.getRestartTime() + 1;  // start time can be 1 or any other number (less than duration) for restarts (repeats)
 	max_time_step = sim.getMaxTimeStep();  // duration of the simulation
-	min_persistence = sim.getMinPersistence();
+	min_persistence = sim.getMinPersistence();  // minimum species richness before reinitializing simulation
 
 	// save initial state at time 0, including parameters, competition matrices, and initial positions of individuals
 	if (start_time == 1) {
@@ -64,20 +66,25 @@ int main(int argc, char* argv[]) {
 		std::chrono::steady_clock::time_point t_start = std::chrono::steady_clock::now();
 
 		// distribute sites in lattice among threads
-		#pragma omp parallel for
-		for (int i = 0; i < lattice_size; i++) {
-			for (int j = 0; j < lattice_size; j++) {
-
-				// RNG discards values so that the simulations are repeatable
-				sim.discardRandom(((unsigned long long) (4 * lattice_size * lattice_size * (time_step - 1) + 4 * (j + lattice_size * i))) - this_random_count, 
-									this_random_count, this_random_generator);
-				// update single site in 'next_lattice' and 'next_dispersal_lattice'
-
-				sim.updateSingleSite(i, j, this_random_count, this_random_generator);
-
-			}
-		}
+		#pragma omp parallel for schedule(monotonic:static) 
+		for (int index = 0; index < lattice_size * lattice_size; index++) {
 		
+			int i = index / lattice_size;
+			int j = index - i * lattice_size;
+
+			if (index == 0) {
+				unsigned long long test = 4 * lattice_size * lattice_size * ((unsigned long long) time_step - 1) + 4 * (j + lattice_size * i);
+				fprintf(stdout, "Time step cast = %llu, Starting random count = %llu, %llu\n", (unsigned long long) time_step,  test, this_random_count);
+			} 
+
+			// RNG discards values so that the simulations are repeatable
+			sim.discardRandom(4 * lattice_size * lattice_size * ((unsigned long long) time_step - 1) + 4 * (j + lattice_size * i) - this_random_count, 
+								this_random_count, this_random_generator);
+
+			// update single site in 'next_lattice' and 'next_dispersal_lattice'
+			sim.updateSingleSite(i, j, this_random_count, this_random_generator);
+		}
+
 		persistence = sim.getPersistence();  // get the number of species currently coexisting in the lattice
 		
 		// if persistence is below the minimum allowed persistence, new random seeds are drawn and the simulation is reinitialized
@@ -90,14 +97,14 @@ int main(int argc, char* argv[]) {
 			sim.saveLattice(0);
 			persistence = 0;
 			time_step = 0;
-
+			// pass new seeds to each thread
 			#pragma omp parallel 
 			{
 				sim.seedGenerator(this_random_generator);
+				this_random_count = 0;
 				sim.discardRandom(sim.getMaxRandomCount(), this_random_count, this_random_generator);
 				this_random_count = sim.getRandomCount();
 			}
-
 			continue;
 		}
 		
