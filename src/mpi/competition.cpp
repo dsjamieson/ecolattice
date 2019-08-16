@@ -334,59 +334,58 @@ void Simulation::getDiscreteTransitivity() {
 	double bottom_mean = 0.;
 	double top_variance = 0.;
 	double bottom_variance = 0.;
-	double fecundity_row_mean = 0.;	
-	double growth_row_mean = 0.;
+	double fecundity_rank_mean = 0.;	
+	double growth_rank_mean = 0.;
 	double fecundity_variance = 0.;
 	double growth_variance = 0.;
 
-	int *top_row_sum = new int[num_species];
-	int *bottom_row_sum = new int[num_species];
-	if (!top_row_sum || !bottom_row_sum ) {
+	int *top_rank = new int[num_species];
+	int *bottom_rank = new int[num_species];
+	if (!top_rank || !bottom_rank ) {
 		fprintf(stderr, "Error, unable to allocate memory for transitivity calculation\n");
 		MPI_Finalize();
 		exit(-1);
 	}
 
 	for (i = 0; i < num_species; i++ ) {
-		fecundity_row_sum[i] = 0.;
-		growth_row_sum[i] = 0.;
+		fecundity_rank[i] = 0.;
+		growth_rank[i] = 0.;
 	}
 
-	// for a community with the same  number of species, top_row_sum describes the row sums of
-	// a competitive outcomes matrix for a completely transitive community.
-	// bottom_row_sum describes the row sums of a competitive outcomes matrix
-	// for a maximally intransitive community. the variance of row sums for these two cases
-	// represents the maximum and minimum variance of row sums used in the RI index
+	// for a community with the same  number of species, top_rank describes the number of species
+	// that each species outcompetes in a completely transitive community.
+	// bottom_rank describes the number of species that each species outcompetes in a 
+	// maximally intransitive community. the variance of ranks for these two cases
+	// represents the maximum and minimum variance of ranks used in the RI index
 	for (i = 0; i < num_species; i++) {
-		top_row_sum[i] = num_species - (i + 1);
+		top_rank[i] = num_species - (i + 1);
 		if (num_species % 2 == 0) {
 			if (i < num_species / 2)
-				bottom_row_sum[i] = num_species / 2;
+				bottom_rank[i] = num_species / 2;
 			else
-				bottom_row_sum[i] = num_species / 2. - 1;
+				bottom_rank[i] = num_species / 2. - 1;
 		}
 		else
-			bottom_row_sum[i] = (num_species - 1) / 2;
+			bottom_rank[i] = (num_species - 1) / 2;
 
-		top_mean += top_row_sum[i];
-		bottom_mean += bottom_row_sum[i];
+		top_mean += top_rank[i];
+		bottom_mean += bottom_rank[i];
 	}
 	top_mean = top_mean / num_species;
 	bottom_mean = bottom_mean / num_species;
 
 	for (i = 0; i < num_species; i++) {
-		top_variance += pow(top_row_sum[i] - top_mean, 2);
-		bottom_variance += pow(bottom_row_sum[i] - bottom_mean, 2);
+		top_variance += pow(top_rank[i] - top_mean, 2);
+		bottom_variance += pow(bottom_rank[i] - bottom_mean, 2);
 	}
 	top_variance = top_variance / (num_species - 1);
 	bottom_variance = bottom_variance / (num_species - 1);
 
-	delete[] top_row_sum;
-	delete[] bottom_row_sum;
+	delete[] top_rank;
+	delete[] bottom_rank;
 	
 	// create competitive outcomes matrix for growth and fecundity competition matrices. 
-	// insert 1 if row species outcompetes column species, and a 0 if column species
-	// outcompetes row species. 
+	// for matrix index i, j: 1 if j outcompetes i, and 0 if i outcompetes j
 	for (i = 0; i < num_species; i++) {
 		for (j = i + 1; j < num_species; j++) {
 
@@ -398,8 +397,8 @@ void Simulation::getDiscreteTransitivity() {
 				fecundity_transitivity[i][j] = 0.;
 				fecundity_transitivity[j][i] = 1.;
 			}
-			fecundity_row_sum[i] += fecundity_transitivity[i][j];
-			fecundity_row_sum[j] += fecundity_transitivity[j][i];
+			fecundity_rank[i] += fecundity_transitivity[j][i];
+			fecundity_rank[j] += fecundity_transitivity[i][j];
 
 			if (competition_growth[i][j] < competition_growth[j][i]) {
 				growth_transitivity[i][j] = 1.;
@@ -409,24 +408,23 @@ void Simulation::getDiscreteTransitivity() {
 				growth_transitivity[i][j] = 0.;
 				growth_transitivity[j][i] = 1.;
 			}
-			growth_row_sum[i] += growth_transitivity[i][j];
-
-			growth_row_sum[j] += growth_transitivity[j][i];
+			growth_rank[i] += growth_transitivity[j][i];
+			growth_rank[j] += growth_transitivity[i][j];
 		}	
 	}
 
-	// calculate variance of row sums for the observed community
+	// calculate variance of ranks for the observed community
 	// and compare to minimum and maximum variance in RI index calculation.
 	for (i = 0; i < num_species; i++) {
-		fecundity_row_mean += fecundity_row_sum[i];
-		growth_row_mean += growth_row_sum[i];
+		fecundity_rank_mean += fecundity_rank[i];
+		growth_rank_mean += growth_rank[i];
 	}
-	fecundity_row_mean = fecundity_row_mean / num_species;
-	growth_row_mean = growth_row_mean / num_species;
+	fecundity_rank_mean = fecundity_rank_mean / num_species;
+	growth_rank_mean = growth_rank_mean / num_species;
 
 	for (i = 0; i < num_species; i++) {
-		fecundity_variance += pow(fecundity_row_sum[i] - fecundity_row_mean, 2);
-		growth_variance += pow(growth_row_sum[i] - growth_row_mean, 2);
+		fecundity_variance += pow(fecundity_rank[i] - fecundity_rank_mean, 2);
+		growth_variance += pow(growth_rank[i] - growth_rank_mean, 2);
 	}
 	fecundity_variance = fecundity_variance / (num_species - 1);
 	growth_variance = growth_variance / (num_species - 1);
@@ -442,7 +440,7 @@ void Simulation::getContinuousTransitivity() {
 	/* calculate continous transitivity of growth and fecundity competition matrices.
 	continous transitivity uses the sum of pairwise elements scaled by the range over which
 	competition occurs. the magnitude is equal for pairwise elements, but the species that 
-	is a better competitor is positive and the worse competitor is negative. row sums are calculated
+	is a better competitor is positive and the worse competitor is negative. ranks are calculated
 	as with discrete transitivity. this metric is not currently implemented. */
 
 	int i, j;
@@ -452,15 +450,15 @@ void Simulation::getContinuousTransitivity() {
 			fecundity_transitivity[i][j] = (-competition_fecundity[i][j] + competition_fecundity[j][i])
 											/ (competition_upper_bound - competition_lower_bound);
 			fecundity_transitivity[j][i] = -fecundity_transitivity[i][j];
-			fecundity_row_sum[i] += fecundity_transitivity[i][j];
-			fecundity_row_sum[j] += fecundity_transitivity[j][i];
+			fecundity_rank[i] += fecundity_transitivity[j][i];
+			fecundity_rank[j] += fecundity_transitivity[i][j];
 
 			growth_transitivity[i][j] = (-competition_growth[i][j] + competition_growth[j][i])
 											/ (competition_upper_bound - competition_lower_bound);
 
 			growth_transitivity[j][i] = -growth_transitivity[i][j];
-			growth_row_sum[i] += growth_transitivity[i][j];
-			growth_row_sum[j] += growth_transitivity[j][i];
+			growth_rank[i] += growth_transitivity[j][i];
+			growth_rank[j] += growth_transitivity[i][j];
 		}	
 	}
 
@@ -469,17 +467,16 @@ void Simulation::getContinuousTransitivity() {
 
 
 void Simulation::getDiscreteFecundityTransitivity() {
-	/* calculate the row sums of the fecundity competition matrix. used when manipulating transitivity
+	/* calculate the ranks of the fecundity competition matrix. used when manipulating transitivity
 	in method 'setCompetitionTransitivity'. */
 
 	int i, j, k;
 	double pivot = 0;
 
-	// create competitive outcomes matrix (fecundity_transitivity), insert 1 if row species 
-	// outcompetes column species, and a 0 if column species outcompetes row species. calculate
-	// row sums.
+	// create competitive outcomes matrix (fecundity_transitivity), for matrix index i, j: 1 if j
+	// outcompetes i, and 0 if i outcompetes j. calculate ranks, or the number of species that each species outcompetes.
 	for (i = 0; i < num_species; i++) {
-		 fecundity_row_sum[i] = 0.;
+		 fecundity_rank[i] = 0.;
 	}
 
 	for (i = 0; i < num_species; i++) {
@@ -492,27 +489,25 @@ void Simulation::getDiscreteFecundityTransitivity() {
 				fecundity_transitivity[i][j] = 0.;
 				fecundity_transitivity[j][i] = 1.;
 			}
-			fecundity_row_sum[i] += fecundity_transitivity[i][j];
-			fecundity_row_sum[j] += fecundity_transitivity[j][i];
+			fecundity_rank[i] += fecundity_transitivity[j][i];
+			fecundity_rank[j] += fecundity_transitivity[i][j];
 		}	
 	}
-
 	return;
 }
 
 
 void Simulation::getDiscreteGrowthTransitivity() {
-	/* calculate the row sums of the growth competition matrix. used when manipulating transitivity
+	/* calculate the ranks of the growth competition matrix. used when manipulating transitivity
 	in method 'setCompetitionTransitivity'. */
 
 	int i, j, k;
 	double pivot = 0;
 
-	// create competitive outcomes matrix (growth_transitivity), insert 1 if row species 
-	// outcompetes column species, and a 0 if column species outcompetes row species. calculate
-	// row sums.
+	// create competitive outcomes matrix (fecundity_transitivity), for matrix index i, j: 1 if j
+	// outcompetes i, and 0 if i outcompetes j. calculate ranks, or the number of species that each species outcompetes.
 	for (i = 0; i < num_species; i++) {
-		 growth_row_sum[i] = 0.;
+		 growth_rank[i] = 0.;
 	}
 	for (i = 0; i < num_species; i++) {
 		for (j = i + 1; j < num_species; j++) {
@@ -524,13 +519,11 @@ void Simulation::getDiscreteGrowthTransitivity() {
 				growth_transitivity[i][j] = 0.;
 				growth_transitivity[j][i] = 1.;
 			}
-			growth_row_sum[i] += growth_transitivity[i][j];
-			growth_row_sum[j] += growth_transitivity[j][i];
+			growth_rank[i] += growth_transitivity[j][i];
+			growth_rank[j] += growth_transitivity[i][j];
 		}	
 	}
-
 	return;
-
 }
 
 
@@ -544,34 +537,35 @@ void Simulation::setCompetitionTransitivity() {
 	int i, j, k;
 	int ih, jh;
 	double hold;
-	int *desired_fecundity_row_sum = new int[num_species];
-	if(!desired_fecundity_row_sum) {
+	int *desired_fecundity_rank = new int[num_species];
+	if(!desired_fecundity_rank) {
 		fprintf(stderr, "Error, unable to allocate memory to initialize transitive competition\n");
 		MPI_Finalize();
 		exit(-1);
 	}
 
-	// set desired pattern of row sums
+	// set desired pattern of ranks (number of species outcompeted)
 	// completely transitive
 	if (fecundity_transitivity_type == 1.) {
 		for (i = 0; i < num_species; i++)
-			desired_fecundity_row_sum[i] = num_species - (i + 1);
+			desired_fecundity_rank[i] = num_species - (i + 1);
 	}
 	// maximally intransitive
 	else if (fecundity_transitivity_type == -1.) {
 		if (num_species % 2 == 0) {
 			for (i = 0; i < num_species / 2; i++) {
-				desired_fecundity_row_sum[i] = num_species / 2;
-				desired_fecundity_row_sum[num_species - (i + 1)] = num_species / 2 -1; 
+				desired_fecundity_rank[i] = num_species / 2;
+				desired_fecundity_rank[num_species - (i + 1)] = num_species / 2 -1; 
 			}
 		}
 		else {
 			for (i = 0; i < num_species; i++) {
-				desired_fecundity_row_sum[i] = (num_species - 1) / 2;
+				desired_fecundity_rank[i] = (num_species - 1) / 2;
 			}
 		}
 	}
-	// if fecundity transitivity type is set to be random, but growth transitivity type is not, call method to set growth transitivity
+	// if fecundity transitivity type is set to be random, but growth transitivity type is not, 
+	// call method to set growth transitivity
 	else if (fecundity_transitivity_type == 0) {
 
 		int * fecundity_hierarchy = new int[num_species];
@@ -591,7 +585,7 @@ void Simulation::setCompetitionTransitivity() {
 		return;
 	}
 
-  	// calculate row sums of observed fecundity matrix, to be compared to desired row sums
+  	// calculate ranks of observed fecundity matrix, to be compared to desired ranks
 	getDiscreteFecundityTransitivity();
 
 	int * fecundity_hierarchy = new int[num_species];
@@ -604,8 +598,8 @@ void Simulation::setCompetitionTransitivity() {
 
 	for (i = 0; i < num_species; i++)
 		fecundity_hierarchy[i] = i;
-	// calculate the difference between the observed row sums and the desired row sums
-	// number of additional species that species i needs to beat if negative
+	// calculate the difference between the observed ranks and the desired ranks
+	// fecunity_diff[ih]: number of additional species that species i needs to beat if negative
 	// number of additional species that species i needs to lose to if positive
 	for (i = num_species - 1; i >= 0; i--) {
 		j = getRandom() % (i + 1);
@@ -613,10 +607,10 @@ void Simulation::setCompetitionTransitivity() {
 		fecundity_hierarchy[i] = fecundity_hierarchy[j];
 		fecundity_hierarchy[j] = k;
 		ih = fecundity_hierarchy[i];
-		fecundity_diff[ih] = (int) fecundity_row_sum[ih] - desired_fecundity_row_sum[i];
+		fecundity_diff[ih] = (int) fecundity_rank[ih] - desired_fecundity_rank[i];
 	} 
 
-	// switch pairwise effects until observed row sums equal desired values
+	// switch pairwise effects until observed ranks equal desired values
 	for (i = 0; i < num_species; i++) {
 		ih = fecundity_hierarchy[i];
 		for (j = num_species - 1; j > i; j--) {
@@ -640,20 +634,20 @@ void Simulation::setCompetitionTransitivity() {
 		}
 	}
 
-	getDiscreteFecundityTransitivity(); // calculate row sums of manipulated fecundity competition matrix
+	getDiscreteFecundityTransitivity(); // calculate ranks of manipulated fecundity competition matrix
 
-	// in intransitive case, a single transitive triplet could remain after this process, check for a difference between desired and observed row sums
+	// in intransitive case, a single transitive triplet could remain after this process, check for a difference between desired and observed ranks
 	ih = -1;
 	jh = -1;	
 	for (i = 0; i < num_species; i++) {
 		ih = fecundity_hierarchy[i];
-		fecundity_diff[ih] = (int) fecundity_row_sum[ih] - desired_fecundity_row_sum[i];
+		fecundity_diff[ih] = (int) fecundity_rank[ih] - desired_fecundity_rank[i];
 		if (fecundity_diff[ih] == 1)
 			break;
 	}  
 	for (i = 0; i < num_species; i++) {
 		jh = fecundity_hierarchy[i];
-		fecundity_diff[jh] = (int) fecundity_row_sum[jh] - desired_fecundity_row_sum[i];
+		fecundity_diff[jh] = (int) fecundity_rank[jh] - desired_fecundity_rank[i];
 		if (fecundity_diff[jh] == -1)
 			break;
 	}
@@ -675,10 +669,10 @@ void Simulation::setCompetitionTransitivity() {
 		}
 	}
 
-	delete[] desired_fecundity_row_sum;
+	delete[] desired_fecundity_rank;
 	delete[] fecundity_diff;
 
-	// calculate row sums of manipulated fecundity competition matrix
+	// calculate ranks of manipulated fecundity competition matrix
 	getDiscreteTransitivity();
 
 	// if growth competition matrix has the same transitivity type as the fecundity matrix,	use the fecundity matrix (already set)
@@ -720,34 +714,34 @@ void Simulation::setGrowthCompetitionTransitivity(int * fecundity_hierarchy) {
 	int i, j, k;
 	int ih, jh;
 	double hold;
-	int *desired_growth_row_sum = new int[num_species];
-	if (!desired_growth_row_sum) {
+	int *desired_growth_rank = new int[num_species];
+	if (!desired_growth_rank) {
 		fprintf(stderr, "Error, unable to allocate memory to initialize transitive competition\n");
 		MPI_Finalize();
 		exit(-1);
 	}
-	// set desired pattern of row sums
+	// set desired pattern of ranks
 	// completely transitive
 	if (growth_transitivity_type == 1.) {
 		for(i = 0; i < num_species; i++)
-			desired_growth_row_sum[i] = num_species - (i + 1) ;
+			desired_growth_rank[i] = num_species - (i + 1) ;
 	}
 	// maximally intransitive
 	else if (growth_transitivity_type == -1.) {
 		if (num_species % 2 == 0) {
 			for (i = 0; i < num_species / 2; i++) {
-				desired_growth_row_sum[i] = num_species / 2 ;
-				desired_growth_row_sum[num_species - (i + 1)] = num_species / 2 - 1 ; 
+				desired_growth_rank[i] = num_species / 2 ;
+				desired_growth_rank[num_species - (i + 1)] = num_species / 2 - 1 ; 
 			}
 		}
 		else {
 			for (i = 0; i < num_species; i++) {
-				desired_growth_row_sum[i] = (num_species - 1) / 2 ;
+				desired_growth_rank[i] = (num_species - 1) / 2 ;
 			}
 		}
 	}
 
-  	// calculate row sums of observed growth matrix, to be compared to desired row sums
+  	// calculate ranks of observed growth matrix, to be compared to desired ranks
 	getDiscreteGrowthTransitivity();
 
 	int * growth_hierarchy = new int[num_species];
@@ -758,8 +752,8 @@ void Simulation::setGrowthCompetitionTransitivity(int * fecundity_hierarchy) {
 		exit(-1);
 	}
 
-	// calculate the difference between the observed row sums and the desired row sums
-	// number of additional species that species i needs to beat if negative
+	// calculate the difference between the observed ranks and the desired ranks
+	// growth_diff[ih]: number of additional species that species i needs to beat if negative
 	// number of additional species that species i needs to lose to if positive
 	if (fecundity_growth_relative_hierarchy == 0) {
 		for (i = 0; i < num_species; i++)
@@ -770,7 +764,7 @@ void Simulation::setGrowthCompetitionTransitivity(int * fecundity_hierarchy) {
 			growth_hierarchy[i] = growth_hierarchy[j];
 			growth_hierarchy[j] = k;
 			ih = growth_hierarchy[i];
-			growth_diff[ih] = (int) growth_row_sum[ih] - desired_growth_row_sum[i];
+			growth_diff[ih] = (int) growth_rank[ih] - desired_growth_rank[i];
 		} 
 	}
 	else {
@@ -780,12 +774,12 @@ void Simulation::setGrowthCompetitionTransitivity(int * fecundity_hierarchy) {
 			if (fecundity_growth_relative_hierarchy == -1)
 				growth_hierarchy[i] = fecundity_hierarchy[num_species - (i + 1)];
 			ih = growth_hierarchy[i];
-			growth_diff[ih] = (int) growth_row_sum[ih] - desired_growth_row_sum[i];
+			growth_diff[ih] = (int) growth_rank[ih] - desired_growth_rank[i];
 
 		}
 	}
 
-	// switch pairwise effects until row sums equal desired values
+	// switch pairwise effects until ranks equal desired values
 	for (i = 0; i < num_species; i++) {
 		ih = growth_hierarchy[i];
 		for (j = num_species - 1; j > i; j--) {
@@ -809,21 +803,22 @@ void Simulation::setGrowthCompetitionTransitivity(int * fecundity_hierarchy) {
 		}
 	}
 
-	getDiscreteGrowthTransitivity();  // calculate row sums of manipulated growth competition matrix
+	getDiscreteGrowthTransitivity();  // calculate ranks of manipulated growth competition matrix
 
 
-	// in intransitive case, a single transitive triplet could remain after this process, check for a difference between desired and observed row sums
+	// in intransitive case, a single transitive triplet could remain after this process, 
+	// check for a difference between desired and observed ranks
 	ih = -1;
 	jh = -1;	
 	for (i = 0; i < num_species; i++) {
 		ih = growth_hierarchy[i];
-		growth_diff[ih] = (int) growth_row_sum[ih] - desired_growth_row_sum[i];
+		growth_diff[ih] = (int) growth_rank[ih] - desired_growth_rank[i];
 		if (growth_diff[ih] == 1)
 			break;
 	}  
 	for (i = 0; i < num_species; i++) {
 		jh = growth_hierarchy[i];
-		growth_diff[jh] = (int) growth_row_sum[jh] - desired_growth_row_sum[i];
+		growth_diff[jh] = (int) growth_rank[jh] - desired_growth_rank[i];
 		if (growth_diff[jh] == -1)
 			break;
 	}
@@ -845,7 +840,7 @@ void Simulation::setGrowthCompetitionTransitivity(int * fecundity_hierarchy) {
 		}
 	}
 
-	delete[] desired_growth_row_sum;
+	delete[] desired_growth_rank;
 	delete[] growth_hierarchy;
 	delete[] growth_diff;
 

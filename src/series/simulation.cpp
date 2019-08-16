@@ -407,11 +407,11 @@ void Simulation::allocSimulation() {
 		fprintf(stderr, "Error, unable to allocate memory for survival or maximum competition arrays\n");
 		exit(-1);
 	}
-	fecundity_row_sum = new double[num_species];
-	growth_row_sum = new double[num_species];
+	fecundity_rank = new double[num_species];
+	growth_rank = new double[num_species];
 	fecundity_transitivity = new double *[num_species];
 	growth_transitivity = new double *[num_species];
-	if (!fecundity_row_sum || !growth_row_sum || !fecundity_transitivity || !growth_transitivity) {
+	if (!fecundity_rank || !growth_rank || !fecundity_transitivity || !growth_transitivity) {
 		fprintf(stderr, "Error, unable to allocate memory for transitivity arrays\n");
 		exit(-1);
 	}
@@ -438,8 +438,8 @@ void Simulation::allocSimulation() {
 		species_occupancy[i] = 0.;
 		dispersal_length[i] = 0.;
 		intrinsic_fecundity[i] = 0.;
-		fecundity_row_sum[i] = 0.;
-		growth_row_sum[i] = 0.;
+		fecundity_rank[i] = 0.;
+		growth_rank[i] = 0.;
 
 		competition_fecundity[i] = new double[num_species];
 		competition_growth[i] = new double[num_species];
@@ -978,17 +978,17 @@ void Simulation::saveCompetition() {
 			competition_file << std::endl;
 		}
 
-	competition_file << "# Fecundity transitivity row sum:" << std::endl;
+	competition_file << "# Fecundity transitivity ranks:" << std::endl;
 	for (i = 0; i < num_species; i++) {
-		competition_file << " " << fecundity_row_sum[i];
+		competition_file << " " << fecundity_rank[i];
 		if (i < num_species - 1)
 			competition_file << ",";
 	}
 	competition_file << std::endl;
 
-	competition_file << "# Growth row sum:" << std::endl;
+	competition_file << "# Growth transitivity ranks:" << std::endl;
 	for (i = 0; i < num_species; i++) {
-		competition_file << " " << growth_row_sum[i];
+		competition_file << " " << growth_rank[i];
 		if (i < num_species - 1)
 			competition_file << ",";
 	}

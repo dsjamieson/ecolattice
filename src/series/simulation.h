@@ -73,7 +73,7 @@ class Simulation {
 		double fecundity_relative_intransitivity, growth_relative_intransitivity;
 		double **competition_fecundity, **competition_growth;
 		double **fecundity_transitivity, **growth_transitivity; 
-		double *fecundity_row_sum, *growth_row_sum;
+		double *fecundity_rank, *growth_rank;
 
 		void initializeRandomSimulation();
 		void initializeReplicateSimulation();
