@@ -772,7 +772,7 @@ void Simulation::updateSingleSite(int i, int j) {
 							int j1 = (j + l) % lattice_size;
 							int j2 = (j - l) % lattice_size;
 							if (j2 < 0)
-								dej2 += lattice_size;
+								j2 += lattice_size;
 							next_dispersal_lattice[i][j1][this_species - 1] += this_fecundity * distance_probability[k][l - 1] / distance_probability_sum;
 							next_dispersal_lattice[i][j2][this_species - 1] += this_fecundity * distance_probability[k][l - 1] / distance_probability_sum;
 							next_dispersal_lattice[i1][j][this_species - 1] += this_fecundity * distance_probability[k][l - 1] / distance_probability_sum;
