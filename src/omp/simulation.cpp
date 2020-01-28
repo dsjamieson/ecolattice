@@ -261,6 +261,11 @@ void Simulation::initializeRandomSimulation() {
 			fprintf(stderr, "Error, if RelativeHierarchy is not zero, FecundityTransitivity and GrowthTransitivity must be equal\n");
 		exit(0);
 	}
+	if (fecundity_growth_relative_hierarchy == -1. && (fecundity_transitivity_type == -1. && growth_transitivity_type == -1.)) {
+		if (id == 0)
+			fprintf(stderr, "Error, if both FecundityTransitivity and GrowthTransitivity are -1 (intransitive), RelativeHierarchy cannot be -1 (inverted).\n");
+		exit(0);
+	}
 	if ((competition_correlation != 0) + (imbalance != 0.5) + ((fabs(fecundity_transitivity_type) + fabs(growth_transitivity_type)) != 0) > 1) {
 		if (id == 0)
 			fprintf(stderr, "Error, only one of CompetitionCorr, Imbalance, and (Fecundity/Growth)Transitivity can be set\n");

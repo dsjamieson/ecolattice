@@ -117,7 +117,8 @@ class Simulation {
 		void imbalanceCompetition();
 		void setCompetitionTransitivity();
 		void setGrowthCompetitionTransitivity();
-
+		void shuffleArray(int *array, int n);		
+		void shuffleMatrix(double **array, int n);
 		// Competition properties
 		void checkCorrelation();
 		void getSpeciesAbundance();
@@ -127,8 +128,6 @@ class Simulation {
 		void getDiscreteFecundityTransitivity();
 		void getDiscreteGrowthTransitivity();
 		void getContinuousTransitivity();
-
-		void shuffleArray(int *array, size_t n);
 
 };
 
