@@ -116,7 +116,7 @@ class Simulation {
 		void initializeTNormalCorrelatedCompetition();
 		void imbalanceCompetition();
 		void setCompetitionTransitivity();
-		void setGrowthCompetitionTransitivity( int * fecundity_hierarchy );
+		void setGrowthCompetitionTransitivity();
 
 		// Competition properties
 		void checkCorrelation();
@@ -127,6 +127,8 @@ class Simulation {
 		void getDiscreteFecundityTransitivity();
 		void getDiscreteGrowthTransitivity();
 		void getContinuousTransitivity();
+
+		void shuffleArray(int *array, size_t n);
 
 };
 

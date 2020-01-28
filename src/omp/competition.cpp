@@ -480,6 +480,7 @@ void Simulation::getDiscreteFecundityTransitivity() {
 
 	for (i = 0; i < num_species; i++) {
 		for (j = i + 1; j < num_species; j++) {
+
 			if (competition_fecundity[i][j] < competition_fecundity[j][i]) {
 				fecundity_transitivity[i][j] = 1.;
 				fecundity_transitivity[j][i] = 0.;
@@ -492,6 +493,29 @@ void Simulation::getDiscreteFecundityTransitivity() {
 			fecundity_rank[j] += fecundity_transitivity[i][j];
 		}	
 	}
+
+	/*fprintf(stdout, "competition_fecundity matrix\n");
+	for (i = 0; i < num_species; i++) {
+		for (j = 0; j < num_species; j++) {
+			fprintf(stdout, "%f ", competition_fecundity[i][j]);
+		}	
+		fprintf(stdout, "\n");
+	}*/
+
+	/*fprintf(stdout, "fecundity_transitivity matrix\n");
+	for (i = 0; i < num_species; i++) {
+		for (j = 0; j < num_species; j++) {
+			fprintf(stdout, "%f ", fecundity_transitivity[i][j]);
+		}	
+		fprintf(stdout, "\n");
+	}*/
+	
+	fprintf(stdout, "fecundity_rank: ");
+	for (i = 0; i < num_species; i++) {
+		fprintf(stdout, "%f ", fecundity_rank[i]);
+	}
+	fprintf(stdout, "\n");
+
 	return;
 }
 
@@ -522,6 +546,30 @@ void Simulation::getDiscreteGrowthTransitivity() {
 			growth_rank[j] += growth_transitivity[i][j];
 		}	
 	}
+
+	/*fprintf(stdout, "competition_growthh matrix\n");
+	for (i = 0; i < num_species; i++) {
+		for (j = 0; j < num_species; j++) {
+			fprintf(stdout, "%f ", competition_growth[i][j]);
+		}	
+		fprintf(stdout, "\n");
+	}
+
+	fprintf(stdout, "growth_transitivity matrix\n");
+	for (i = 0; i < num_species; i++) {
+		for (j = 0; j < num_species; j++) {
+			fprintf(stdout, "%f ", growth_transitivity[i][j]);
+		}	
+		fprintf(stdout, "\n");
+	}*/
+	
+	fprintf(stdout, "growth_rank: ");
+	for (i = 0; i < num_species; i++) {
+		fprintf(stdout, "%f ", growth_rank[i]);
+	}
+	fprintf(stdout, "\n");
+
+
 	return;
 }
 
@@ -534,7 +582,7 @@ void Simulation::setCompetitionTransitivity() {
 	types are not the same */
 
 	int i, j, k;
-	int ih, jh;
+	int ih, jh, complete;
 	double hold;
 	int *desired_fecundity_rank = new int[num_species];
 	if(!desired_fecundity_rank) {
@@ -545,11 +593,15 @@ void Simulation::setCompetitionTransitivity() {
 	// set desired pattern of ranks (number of species outcompeted)
 	// completely transitive
 	if (fecundity_transitivity_type == 1.) {
-		for (i = 0; i < num_species; i++)
+		fprintf(stdout, "fecundity_transitivity_type == 1. (transitive)\n");
+		for (i = 0; i < num_species; i++) {
 			desired_fecundity_rank[i] = num_species - (i + 1);
+		}		
 	}
 	// maximally intransitive
 	else if (fecundity_transitivity_type == -1.) {
+		fprintf(stdout, "fecundity_transitivity_type == -1. (intransitive)\n");
+
 		if (num_species % 2 == 0) {
 			for (i = 0; i < num_species / 2; i++) {
 				desired_fecundity_rank[i] = num_species / 2;
@@ -562,25 +614,33 @@ void Simulation::setCompetitionTransitivity() {
 			}
 		}
 	}
+
+
 	// if fecundity transitivity type is set to be random, but growth transitivity type is not, 
 	// call method to set growth transitivity
 	else if (fecundity_transitivity_type == 0) {
 
 		int * fecundity_hierarchy = new int[num_species];
 		if (!fecundity_hierarchy) {
-			fprintf(stderr, "error, unable to allocate memory to set transitivity hierarchy\n");
+			fprintf(stderr, "Error, unable to allocate memory to set transitivity hierarchy\n");
 			exit(-1);
 		}
 		for (i = 0; i < num_species; i++) {
 			fecundity_hierarchy[i] = 0;
 		}
 
-		setGrowthCompetitionTransitivity(fecundity_hierarchy);
+		setGrowthCompetitionTransitivity();
 
 		delete[] fecundity_hierarchy;
 
 		return;
 	}
+
+	fprintf(stdout, "desired_fecundity_rank: ");
+	for (i = 0; i < num_species; i++) {
+		fprintf(stdout, "%d ", desired_fecundity_rank[i]);
+	}
+	fprintf(stdout, "\n");
 
   	// calculate ranks of observed fecundity matrix, to be compared to desired ranks
 	getDiscreteFecundityTransitivity();
@@ -592,19 +652,121 @@ void Simulation::setCompetitionTransitivity() {
 		exit(-1);
 	}
 
+
+	// calculate the difference between the observed ranks and the desired ranks
+	// fecundity_diff[i]: number of additional species that species i needs to beat if negative
+	// number of additional species that species i needs to lose to if positive
+	for (i = 0; i < num_species; i++) {
+		fecundity_diff[i] = (int) desired_fecundity_rank[i] - fecundity_rank[i];
+	}
+	
+	fprintf(stdout, "fecundity_hierarchy: ");
 	for (i = 0; i < num_species; i++)
+		fprintf(stdout, "%d ", fecundity_hierarchy[i]);
+	fprintf(stdout, "\n");
+
+	fprintf(stdout, "fecundity_diff: ");
+	for (i = 0; i < num_species; i++)
+		fprintf(stdout, "%d ", fecundity_diff[i]);
+	fprintf(stdout, "\n");
+
+	// switch pairwise effects until observed ranks equal desired values
+	for (i = 0; i < num_species; i++) {
+		for (j = num_species - 1; j > i; j--) {
+			// if species i needs to outcompete more species and species j needs to compete fewer species, switch pairwise effects
+			if (fecundity_diff[i] < 0 && fecundity_transitivity[i][j] == 0) {
+				hold = competition_fecundity[j][i];
+				competition_fecundity[j][i] = competition_fecundity[i][j];
+				competition_fecundity[i][j] = hold;
+				fecundity_diff[i]++;
+				fecundity_diff[j]--;
+			}
+			// if species i needs to outcompete fewer species and species j needs to compete more species, switch pairwise effects
+			else if (fecundity_diff[i] > 0 && fecundity_transitivity[i][j] == 1) {
+				hold = competition_fecundity[j][i];
+				competition_fecundity[j][i] = competition_fecundity[i][j];
+				competition_fecundity[i][j] = hold;
+				fecundity_diff[i]--;
+				fecundity_diff[j]++;
+			}
+		}
+	}
+
+	getDiscreteFecundityTransitivity(); // calculate ranks of manipulated fecundity competition matrix
+
+	// in intransitive case, a single transitive triplet could remain after this process, check for a difference between desired and observed ranks
+	ih = -1;
+	jh = -1;
+
+	while (1) {
+		complete = 0;
+		getDiscreteFecundityTransitivity();
+
+		for (i = 0; i < num_species; i++) {
+			fecundity_diff[i] = (int) desired_fecundity_rank[i] - fecundity_rank[i];
+		}
+
+		fprintf(stdout, "fecundity_diff: ");
+		for (i = 0; i < num_species; i++)
+			fprintf(stdout, "%d ", fecundity_diff[i]);
+		fprintf(stdout, "\n");
+		fprintf(stdout, "ih = %d, jh = %d\n", ih, jh);
+
+		for (i = 0; i < num_species; i++) {
+			if (fecundity_diff[i] > 0)
+				ih = i;
+			else if (fecundity_diff[i] < 0)
+				jh = i;
+			else if (fecundity_diff[i] == 0)
+				complete++;
+
+		}	
+
+		if (complete == num_species)
+			break;
+
+		// if transitive triplet remains, switch third species and allow the unresolved pair to flip
+		if (ih != -1) {
+			for (i = 0; i < num_species; i++) {
+				if (i == ih || i == jh)
+					continue;
+				if (fecundity_transitivity[ih][i] == 1 && fecundity_transitivity[jh][i] == 0) {
+					hold = competition_fecundity[ih][i];
+					competition_fecundity[ih][i] = competition_fecundity[i][ih];
+					competition_fecundity[i][ih] = hold;
+					hold = competition_fecundity[jh][i];
+					competition_fecundity[jh][i] = competition_fecundity[i][jh];
+					competition_fecundity[i][jh] = hold;
+					break;
+				}
+			}
+		}
+
+	}
+	
+	getDiscreteFecundityTransitivity();
+	getDiscreteGrowthTransitivity();
+
+
+	/*for (i = 0; i < num_species; i++) {
 		fecundity_hierarchy[i] = i;
+		fprintf(stdout, "fecundity_hierarchy initially: %d\n", fecundity_hierarchy[i]);
+	}
 	// calculate the difference between the observed ranks and the desired ranks
 	// fecunity_diff[ih]: number of additional species that species i needs to beat if negative
 	// number of additional species that species i needs to lose to if positive
+	//
 	for (i = num_species - 1; i >= 0; i--) {
 		j = getRandom() % (i + 1);
 		k = fecundity_hierarchy[i];
 		fecundity_hierarchy[i] = fecundity_hierarchy[j];
+		fprintf(stdout, "fecundity_hierarchy i = %d now: %d given j = %d\n", i, fecundity_hierarchy[i], j);
 		fecundity_hierarchy[j] = k;
+		fprintf(stdout, "fecundity_hierarchy i = %d now: %d given k = %d\n", i, fecundity_hierarchy[i], k);
 		ih = fecundity_hierarchy[i];
+		fprintf(stdout, "ih = %d\n", ih);
 		fecundity_diff[ih] = (int) fecundity_rank[ih] - desired_fecundity_rank[i];
-	} 
+	}
 
 	// switch pairwise effects until observed ranks equal desired values
 	for (i = 0; i < num_species; i++) {
@@ -631,7 +793,7 @@ void Simulation::setCompetitionTransitivity() {
 	}
 
 	getDiscreteFecundityTransitivity(); // calculate ranks of manipulated fecundity competition matrix
-
+	
 	// in intransitive case, a single transitive triplet could remain after this process, check for a difference between desired and observed ranks
 	ih = -1;
 	jh = -1;	
@@ -663,7 +825,8 @@ void Simulation::setCompetitionTransitivity() {
 				break;
 			}
 		}
-	}
+	}*/
+
 
 	delete[] desired_fecundity_rank;
 	delete[] fecundity_diff;
@@ -673,7 +836,7 @@ void Simulation::setCompetitionTransitivity() {
 
 	// if growth competition matrix has the same transitivity type as the fecundity matrix,	use the fecundity matrix (already set)
 	// to manipulate elements in the growth matrix. if both growth and fecundity competition matrices are intransitive, 
-	// they can have either the same species hierarchy or they can have reverse hierarchies, as a different way of modeling a growth/fecundity trade-off. 
+	// they can have either the same species hierarchy or they can have reverse hierarchies (growth/fecundity trade-off). 
 	if (growth_transitivity_type == fecundity_transitivity_type && fecundity_growth_relative_hierarchy != 0.) {
 		for (i = 0; i < num_species; i++) {
 			for (j = i + 1; j < num_species; j++) {
@@ -693,22 +856,38 @@ void Simulation::setCompetitionTransitivity() {
 		}
 	}
 	else {
-		setGrowthCompetitionTransitivity(fecundity_hierarchy);
+		setGrowthCompetitionTransitivity();
 	}
 
+	getDiscreteGrowthTransitivity();
+
 	delete[] fecundity_hierarchy;
+
 
 	return;
 }
 
+void Simulation::shuffleArray(int *array, size_t n) {
+    if (n > 1) 
+    {
+        size_t i;
+        for (i = 0; i < n - 1; i++) 
+        {
+          size_t j = i + rand() / (RAND_MAX / (n - i) + 1);
+          int t = array[j];
+          array[j] = array[i];
+          array[i] = t;
+        }
+    }
+}
 
-void Simulation::setGrowthCompetitionTransitivity(int * fecundity_hierarchy) {
+void Simulation::setGrowthCompetitionTransitivity() {
 	/* this method is called in 'setCompetitionTransitivity' after the fecundity transitivity matrix is set, 
 	and only if the growth transitivity type is not the same as fecundity. this method sets growth competition matrix
 	 transitivity according to parameter 'growth_transitivity_type.' */
 
 	int i, j, k;
-	int ih, jh;
+	int ih, jh, complete;
 	double hold;
 	int *desired_growth_rank = new int[num_species];
 	if (!desired_growth_rank) {
@@ -718,11 +897,25 @@ void Simulation::setGrowthCompetitionTransitivity(int * fecundity_hierarchy) {
 	// set desired pattern of ranks
 	// completely transitive
 	if (growth_transitivity_type == 1.) {
-		for(i = 0; i < num_species; i++)
-			desired_growth_rank[i] = num_species - (i + 1) ;
+		fprintf(stdout, "growth_transitivity_type == 1. (transitive)\n");
+		if (fecundity_growth_relative_hierarchy == 0 || fecundity_growth_relative_hierarchy == 1) {
+			for (i = 0; i < num_species; i++)
+				desired_growth_rank[i] = num_species - (i + 1) ;
+		}
+		if (fecundity_growth_relative_hierarchy == 0) {
+			for (i = 0; i < num_species; i++)
+				shuffleArray(desired_growth_rank, num_species);
+		}
+
+
+		else if (fecundity_growth_relative_hierarchy == -1) {
+			for (i = 0; i < num_species; i++)
+				desired_growth_rank[i] = i ;
+		}
 	}
 	// maximally intransitive
 	else if (growth_transitivity_type == -1.) {
+		fprintf(stdout, "growth_transitivity_type == -1. (intransitive)\n");
 		if (num_species % 2 == 0) {
 			for (i = 0; i < num_species / 2; i++) {
 				desired_growth_rank[i] = num_species / 2 ;
@@ -736,6 +929,15 @@ void Simulation::setGrowthCompetitionTransitivity(int * fecundity_hierarchy) {
 		}
 	}
 
+	fprintf(stdout, "desired_growth_rank: ");
+	for (i = 0; i < num_species; i++) {
+		fprintf(stdout, "%d ", desired_growth_rank[i]);
+	}
+	fprintf(stdout, "\n");
+
+
+
+
   	// calculate ranks of observed growth matrix, to be compared to desired ranks
 	getDiscreteGrowthTransitivity();
 
@@ -747,9 +949,106 @@ void Simulation::setGrowthCompetitionTransitivity(int * fecundity_hierarchy) {
 	}
 
 	// calculate the difference between the observed ranks and the desired ranks
+	// growth_diff[i]: number of additional species that species i needs to beat if negative
+	// number of additional species that species i needs to lose to if positive
+	//
+
+	for (i = 0; i < num_species; i++) {
+		growth_diff[i] = (int) desired_growth_rank[i] - growth_rank[i];
+	}
+	
+	fprintf(stdout, "growth_hierarchy: ");
+	for (i = 0; i < num_species; i++)
+		fprintf(stdout, "%d ", growth_hierarchy[i]);
+	fprintf(stdout, "\n");
+
+	fprintf(stdout, "growth_diff: ");
+	for (i = 0; i < num_species; i++)
+		fprintf(stdout, "%d ", growth_diff[i]);
+	fprintf(stdout, "\n");
+
+
+
+	// switch pairwise effects until observed ranks equal desired values
+	for (i = 0; i < num_species; i++) {
+		for (j = num_species - 1; j > i; j--) {
+			// if species i needs to outcompete more species and species j needs to compete fewer species, switch pairwise effects
+			if (growth_diff[i] < 0 && growth_transitivity[i][j] == 0) {
+				hold = competition_growth[j][i];
+				competition_growth[j][i] = competition_growth[i][j];
+				competition_growth[i][j] = hold;
+				growth_diff[i]++;
+				growth_diff[j]--;
+			}
+			// if species i needs to outcompete fewer species and species j needs to compete more species, switch pairwise effects
+			else if (growth_diff[i] > 0 && growth_transitivity[i][j] == 1) {
+				hold = competition_growth[j][i];
+				competition_growth[j][i] = competition_growth[i][j];
+				competition_growth[i][j] = hold;
+				growth_diff[i]--;
+				growth_diff[j]++;
+			}
+		}
+	}
+
+	getDiscreteGrowthTransitivity(); // calculate ranks of manipulated growth competition matrix
+
+
+	// in intransitive case, a single transitive triplet could remain after this process, check for a difference between desired and observed ranks
+	ih = -1;
+	jh = -1;
+	while (1) {
+		complete = 0;
+		getDiscreteGrowthTransitivity();
+
+		for (i = 0; i < num_species; i++) {
+			growth_diff[i] = (int) desired_growth_rank[i] - growth_rank[i];
+		}
+
+		for (i = 0; i < num_species; i++) {
+			if (growth_diff[i] > 0)
+				ih = i;
+			else if (growth_diff[i] < 0)
+				jh = i;
+
+		}	
+		
+		fprintf(stdout, "growth_diff: ");
+		for (i = 0; i < num_species; i++)
+			fprintf(stdout, "%d ", growth_diff[i]);
+		fprintf(stdout, "\n");
+		fprintf(stdout, "ih = %d, jh = %d\n", ih, jh);
+		
+		for (i = 0; i < num_species; i ++) {
+			if (growth_diff[i] == 0)
+				complete++;
+		}
+		if (complete == num_species)
+			break;
+
+		// if transitive triplet remains, switch third species and allow the unresolved pair to flip
+		if (ih != -1) {
+			for (i = 0; i < num_species; i++) {
+				if (i == ih || i == jh)
+					continue;
+				if (growth_transitivity[ih][i] == 1 && growth_transitivity[jh][i] == 0) {
+					hold = competition_growth[ih][i];
+					competition_growth[ih][i] = competition_growth[i][ih];
+					competition_growth[i][ih] = hold;
+					hold = competition_growth[jh][i];
+					competition_growth[jh][i] = competition_growth[i][jh];
+					competition_growth[i][jh] = hold;
+					break;
+				}
+			}
+		}
+
+	}
+
+	// calculate the difference between the observed ranks and the desired ranks
 	// growth_diff[ih]: number of additional species that species i needs to beat if negative
 	// number of additional species that species i needs to lose to if positive
-	if (fecundity_growth_relative_hierarchy == 0) {
+	/*if (fecundity_growth_relative_hierarchy == 0) {
 		for (i = 0; i < num_species; i++)
 			growth_hierarchy[i] = i;
 		for (i = num_species - 1; i >= 0; i--) {
@@ -832,7 +1131,7 @@ void Simulation::setGrowthCompetitionTransitivity(int * fecundity_hierarchy) {
 				break;
 			}
 		}
-	}
+	}*/
 
 	delete[] desired_growth_rank;
 	delete[] growth_hierarchy;

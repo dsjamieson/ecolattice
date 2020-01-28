@@ -21,7 +21,7 @@ int main(int argc, char* argv[]) {
 
 	// determine number of processors and set thread IDs
 	int nproc = 1;
-	nproc = 10;
+	nproc = 9;
 	omp_set_num_threads(nproc);
 	thread_local int my_id;
 	#pragma omp parallel

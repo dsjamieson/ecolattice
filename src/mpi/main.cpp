@@ -222,10 +222,6 @@ int main(int argc, char* argv[]) {
 				for (this_site = task_site_number[myid - 1]; this_site < task_site_number[myid]; this_site++) {
 					i = this_site / lattice_size;
 					j = this_site - i * lattice_size;
-					if (i == 0 && j == 0) {
-						unsigned long long test = 4 * lattice_size * lattice_size * ((unsigned long long) time_step - 1) + 4 * (j + lattice_size * i);
-						fprintf(stdout, "Starting random count = %llu, %llu\n", test, sim.getRandomCount());
-					}	
 					// RNG discards values so that the simulations are repeatable
 					sim.discardRandom(4 * lattice_size * lattice_size * ((unsigned long long) time_step - 1) + 4 * (j + lattice_size * i) - sim.getRandomCount());
 					

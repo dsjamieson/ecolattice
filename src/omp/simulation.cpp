@@ -116,6 +116,23 @@ Simulation::Simulation(std::string filename, int p_id) {
 	getSpeciesAbundance();
 	getImbalanceMean();
 	getDiscreteTransitivity();
+	if (fecundity_relative_intransitivity != 1. && fecundity_transitivity_type == -1.) {
+		fprintf(stderr, "Error, setting transitivity type failed\n");
+		exit(0);
+	}
+	else if (fecundity_relative_intransitivity != 0. && fecundity_transitivity_type == 1.) {
+		fprintf(stderr, "Error, setting transitivity type failed\n");
+		exit(0);
+	}
+	if (growth_relative_intransitivity != 1. && growth_transitivity_type == -1.) {
+		fprintf(stderr, "Error, setting transitivity type failed\n");
+		exit(0);
+	}
+	else if (growth_relative_intransitivity != 0. && growth_transitivity_type == 1.) {
+		fprintf(stderr, "Error, setting transitivity type failed\n");
+		exit(0);
+	}
+
 	getFecundityGrowthCorrelation();
 
 	// RNG is set to jump ahead to the maximum number of random draws that could have already been used by the RNG when initializing the simulation
