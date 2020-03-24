@@ -160,12 +160,22 @@ void Simulation::initializeRandomSimulation() {
 
 	// set species specific parameters, potentially random
 	getParameter(delta, num_species, "Delta", 2);
+	for (int i = 0; i < num_species; i++) {
+		neighborhood_size[i] = (2 * delta[i] + 1) * (2 * delta[i] + 1) - 1;
+	}
 	setRandomParameter(species_occupancy, num_species, "SpeciesOccupancy", 3);
 	setRandomParameter(juvenile_survival_probability, num_species, "JuvenileSurvival", 2);
 	setRandomParameter(adult_survival_probability, num_species, "AdultSurvival", 2);
 	setRandomParameter(maximum_competition, num_species, "MaximumCompetition", 2);
 	setRandomParameter(dispersal_probability,  num_species,"DispersalProbability", 2);
 	setRandomParameter(dispersal_length, num_species, "DispersalLength", 4);
+	for (int i = 0; i < num_species; i++) {
+		if ((int) round(2 * dispersal_length[i]) > lattice_size) {
+			if (id == 0)
+				fprintf(stderr, "Error, DispersalLength must be less than half of LatticeSize\n");
+			exit(0);
+		}
+	}
 	setRandomParameter(intrinsic_fecundity, num_species, "Fecundity", 4);
 	
 	// set competition parameters
@@ -328,6 +338,9 @@ void Simulation::initializeReplicateSimulation() {
 
 	// read in Delta from parameter file and all other parameters from competition file
 	getParameter(delta, num_species, "Delta", 2);
+	for (int i = 0; i < num_species; i++) {
+		neighborhood_size[i] = (2 * delta[i] + 1) * (2 * delta[i] + 1) - 1;
+	}
 	loadCompetition();
 
 	// RNG discard after loading random parameters, as some used rejection sampling
@@ -359,6 +372,10 @@ void Simulation::initializeRestartSimulation() {
 	loadDispersal();
 	// read in Delta from parameter file and all other parameters from competition file
 	getParameter(delta, num_species, "Delta", 2);
+	for (int i = 0; i < num_species; i++) {
+		neighborhood_size[i] = (2 * delta[i] + 1) * (2 * delta[i] + 1) - 1;
+	}
+
 	loadCompetition();
 	loadLattice();
 
@@ -423,6 +440,7 @@ void Simulation::allocSimulation() {
 
 	species_abundance = new int[num_species];
 	delta = new int[num_species];
+	neighborhood_size = new int[num_species];
 	juvenile_survival_probability = new double[num_species];
 	adult_survival_probability = new double[num_species];
 	maximum_competition = new double[num_species];
@@ -455,6 +473,7 @@ void Simulation::allocSimulation() {
 	for (int i = 0; i < num_species ; i++) {
 		species_abundance[i] = 0;
 		delta[i] = 0;
+		neighborhood_size[i] = 0;
 		juvenile_survival_probability[i] = 0.;
 		adult_survival_probability[i] = 0.;
 		maximum_competition[i] = 0.;
@@ -620,6 +639,7 @@ void Simulation::updateSingleSite(int i, int j) {
 	unsigned long long start_random_count = random_count;
 
 	int this_delta = 0;
+	int this_neighborhood_size = 0;
 	int this_species = 0;
 	int this_stage = 0;
 	int this_max_dispersal = 0;
@@ -645,15 +665,13 @@ void Simulation::updateSingleSite(int i, int j) {
 	// if the site is open, determine whether or not something germinates with a Bernoulli probability based on the total number of seeds in the site
 	// if something germinates, select the species that germinates with probability equal to the relative abundance of each species's seeds in this site.
 	if (this_species == 0) {
-		total_seeds = 0;
 	
 		for (k = 0; k < num_species; k++)
 			total_seeds += dispersal_lattice[i][j][k];
 
-		std::bernoulli_distribution germ_dist(1. - pow(1.- germination_probability, total_seeds));
+		std::bernoulli_distribution germ_dist(1. - pow(1. - germination_probability, total_seeds));
 
 		if (germ_dist(generateRandom())) {
-
 			pathway++;
 			std::discrete_distribution<int> species_dist(dispersal_lattice[i][j], dispersal_lattice[i][j] + num_species);
 			l = abs(species_dist(generateRandom()));
@@ -665,7 +683,6 @@ void Simulation::updateSingleSite(int i, int j) {
 		}
 	}
 	else {
-
 		pathway++;
 		// if the site is not open, determine whether it's occupied by a juvenile or an adult
 		this_stage = lattice[i][j] / abs(lattice[i][j]);
@@ -674,28 +691,29 @@ void Simulation::updateSingleSite(int i, int j) {
 			this_survival_probability = adult_survival_probability[this_species - 1] ;
 		else
 			this_survival_probability = juvenile_survival_probability[this_species - 1];
-		// determine intrinsic fecundity, dispersal probability, dispersal length, and maximum competition based on the species identity
-		this_intrinsic_fecundity = intrinsic_fecundity[this_species - 1];
-		this_dispersal_probability = dispersal_probability[this_species - 1];
-		this_dispersal_length = dispersal_length[this_species - 1];
-		this_maximum_competition = maximum_competition[this_species - 1];
 
 		std::bernoulli_distribution survival_dist(this_survival_probability);
 		// if species survives, it persists to next time step
 		if (survival_dist(generateRandom())) {
-
 			pathway++;
 			next_lattice[i][j] = lattice[i][j];
 
 			// determine abundance of each species in the neighborhood of the focal individual
 			// neighborhood limits depend on the parameter delta for this_species
 			this_delta = delta[this_species - 1];
-			neighborhood = new int[(2 * this_delta + 1) * (2 * this_delta + 1)]; 
+			this_neighborhood_size = neighborhood_size[this_species - 1];
+			// determine intrinsic fecundity, dispersal probability, dispersal length, and maximum competition based on the species identity
+			this_intrinsic_fecundity = intrinsic_fecundity[this_species - 1];
+			this_dispersal_probability = dispersal_probability[this_species - 1];
+			this_dispersal_length = dispersal_length[this_species - 1];
+			this_maximum_competition = maximum_competition[this_species - 1];
+
+			neighborhood = new int[this_neighborhood_size + 1]; 
 			if (!neighborhood) {
 					fprintf(stderr, "Error, neighborhood memory allocation failed for site %d %d\n", i, j);	
 					exit(-1);
 			}
-			for (k = 0; k < (2 * this_delta + 1) * (2 * this_delta + 1); k++)
+			for (k = 0; k < this_neighborhood_size + 1; k++)
 				neighborhood[k] = 0;
 			neighborhood_abundance = new int[num_species];
 			if (!neighborhood_abundance) {
@@ -703,23 +721,32 @@ void Simulation::updateSingleSite(int i, int j) {
 					exit(-1);
 			}
 			for (k = 0; k < num_species; k++)
-				neighborhood_abundance[k] = 0;	
+				neighborhood_abundance[k] = 0;
+			int neighbor_index = 0;	
 			for (k = 0; k < 2 * this_delta + 1; k++) {
 				for (l = 0; l < 2 * this_delta + 1; l++) {
+					// skip center case
 					if (k != this_delta || l != this_delta) {
+						// lattice indices for site neighbors, accounting for periodic boundary conditions
 						kp = k;
 						lp = l;
+						// if lattice row index is negative, wrap around to end of row
 						if (i - this_delta + kp < 0)
 							kp += lattice_size - i;
+						// if lattice row index is past the end of the row, wrap around to start of row
 						else if (i - this_delta + kp > lattice_size - 1)
-							kp += -lattice_size;	
+							kp += -lattice_size;
+						// if lattice column index is negative, wrap around to end of column
 						if (j - this_delta + lp < 0)
 							lp += lattice_size - j;
+						// if lattice column index is past the end of the column, wrap around to start of column
 						else if (j - this_delta + lp > lattice_size - 1)
 							lp += -lattice_size;
-						neighborhood[l + (2 * this_delta + 1) * k] = lattice[i - this_delta + kp][j - this_delta + lp];
-						if (neighborhood[l + (2 * this_delta + 1) * k] != 0) {
-							neighborhood_abundance[abs(neighborhood[l + (2 * this_delta + 1) * k]) - 1]++;
+						neighbor_index = l + (2 * this_delta + 1) * k;
+						// use neighbor lattice indices to place neighbors in neighborhood vector
+						neighborhood[neighbor_index] = lattice[i - this_delta + kp][j - this_delta + lp];
+						if (neighborhood[neighbor_index] != 0) {
+							neighborhood_abundance[abs(neighborhood[neighbor_index]) - 1]++;
 							total_abundance++;
 						}	
 					}
@@ -732,8 +759,8 @@ void Simulation::updateSingleSite(int i, int j) {
 			if (this_stage < 0) {
 				pathway++;
 				for (k = 0; k < num_species; k++)
-					growth_probability += competition_growth[this_species - 1][k] * ((double) neighborhood_abundance[k]) / ((double) total_abundance);
-				growth_probability = this_maximum_competition * exp(growth_probability);
+					growth_probability += competition_growth[this_species - 1][k] * ((double) neighborhood_abundance[k]) / ((double) this_neighborhood_size);
+				growth_probability = exp(growth_probability);
 				if (growth_probability > this_maximum_competition)
 					growth_probability = this_maximum_competition;
 
@@ -748,7 +775,7 @@ void Simulation::updateSingleSite(int i, int j) {
 				// if focal individual is an adult, it will reproduce with a fecundity based on competition with individuals in its neighborhood
 				if (total_abundance != 0) {
 					for (k = 0; k < num_species; k++)
-						this_fecundity += competition_fecundity[this_species - 1][k] * ((double) neighborhood_abundance[k]) / ((double) total_abundance);
+						this_fecundity += competition_fecundity[this_species - 1][k] * ((double) neighborhood_abundance[k]) / ((double) this_neighborhood_size);
 					this_fecundity = this_intrinsic_fecundity * exp(this_fecundity);
 				}
 				else {
@@ -773,45 +800,57 @@ void Simulation::updateSingleSite(int i, int j) {
 						exit(-1);
 					}
 					for (l = 1; l <= this_max_dispersal; l++) {
-						double distance_x = (double) k;
-						double distance_y = (double) l;
-						double distance = sqrt(distance_x * distance_x + distance_y * distance_y);
+						double distance = sqrt(k * k + l * l);
 						double probability = 0.;
 						if (round(distance) <= this_max_dispersal) {
 							probability = exp(log(this_dispersal_probability) / dispersal_length[this_species - 1] * distance);
+							// every distance has four locations on lattice
 							distance_probability_sum +=	4. * probability;
 						}				
 						distance_probability[k][l - 1] = probability;
 					}
 				}
+				// start at lower right rectangular quadrant
+				// determine the four lattice indices that correspond with each dispersal distance
 				for (k = 0; k <= this_max_dispersal; k++) {
 					for (l = 1; l <= this_max_dispersal; l++) {
 						if (k == 0) {
+							// in same row as site i, j (l = distance from center)
+							// the four lattice indices are in the cardinal directions
 							int i1 = (i + l) % lattice_size;
-							int i2 = (i - l) % lattice_size;
+							int i2 = i - l;
 							if (i2 < 0)
 								i2 += lattice_size;
 							int j1 = (j + l) % lattice_size;
-							int j2 = (j - l) % lattice_size;
+							int j2 = j - l;
 							if (j2 < 0)
 								j2 += lattice_size;
+							// same row, i1 to the right
 							next_dispersal_lattice[i][j1][this_species - 1] += this_fecundity * distance_probability[k][l - 1] / distance_probability_sum;
+							// same row, i2 to the left
 							next_dispersal_lattice[i][j2][this_species - 1] += this_fecundity * distance_probability[k][l - 1] / distance_probability_sum;
+							// same column, i1 up
 							next_dispersal_lattice[i1][j][this_species - 1] += this_fecundity * distance_probability[k][l - 1] / distance_probability_sum;
+							// same column, i2 down
 							next_dispersal_lattice[i2][j][this_species - 1] += this_fecundity * distance_probability[k][l - 1] / distance_probability_sum;	
 							}
 						else {
+							// square quadrants not in the same row as site i, j
 							int i1 = (i + k) % lattice_size;
-							int i2 = (i - k) % lattice_size;
+							int i2 = i - k;
 							if (i2 < 0)
 								i2 += lattice_size;
 							int j1 = (j + l) % lattice_size;
-							int j2 = (j - l) % lattice_size;
+							int j2 = j - l;
 							if (j2 < 0)
 								j2 += lattice_size;
+							// upper right quadrant
 							next_dispersal_lattice[i1][j1][this_species - 1] += this_fecundity * distance_probability[k][l - 1] / distance_probability_sum;
+							// upper left quadrant
 							next_dispersal_lattice[i2][j1][this_species - 1] += this_fecundity * distance_probability[k][l - 1] / distance_probability_sum;
+							// lower right quadrant
 							next_dispersal_lattice[i1][j2][this_species - 1] += this_fecundity * distance_probability[k][l - 1] / distance_probability_sum;
+							// lower left quadrant
 							next_dispersal_lattice[i2][j2][this_species - 1] += this_fecundity * distance_probability[k][l - 1] / distance_probability_sum;
 						}
 					}

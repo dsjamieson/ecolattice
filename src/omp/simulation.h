@@ -67,7 +67,7 @@ class Simulation {
 		double ***dispersal_lattice, ***next_dispersal_lattice;
 
 		// Species specific parameters
-		int *delta;
+		int *delta, *neighborhood_size;
 		double *species_occupancy, *juvenile_survival_probability, *adult_survival_probability;
 		double *maximum_competition, *dispersal_probability, *dispersal_length, *intrinsic_fecundity;
 	

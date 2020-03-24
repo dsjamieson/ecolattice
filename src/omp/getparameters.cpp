@@ -94,9 +94,9 @@ void Simulation::setRandomSeeds() {
 
 	int i;
 	std::random_device r;
-	seeds[0] = static_cast<unsigned int>(std::chrono::high_resolution_clock::now().time_since_epoch().count());
+	seeds[0] = 100; //static_cast<unsigned int>(std::chrono::high_resolution_clock::now().time_since_epoch().count());
 	for (i = 1; i < 5; i++)
-		seeds[i] = (unsigned int) r(); 
+		seeds[i] = i * 1000; // (unsigned int) r(); 
 
 	return;
 }
