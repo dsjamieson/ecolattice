@@ -8,7 +8,7 @@
 	 *
 	 ***********************************************************/
 
-#include "simulation.h"
+#include "simulation.hpp"
 
 void Simulation::checkInputFormat() {
 	/* check 'parameters.dat' for all parameters and correct format. can remove commented lines from parameters file, where comments are specified with '#'. */
@@ -20,11 +20,10 @@ void Simulation::checkInputFormat() {
 						  "DispersalLengthSdev", "Fecundity", "FecunditySdev", "CompetitionLower", "CompetitionUpper",
 						  "CompetitionDiagLower", "CompetitionDiagUpper", "CompetitionDiagMean", "CompetitionDiagSdev",
 						  "CompetitionType", "CompetitionMean", "CompetitionSdev", "CompetitionCorr", "Imbalance", "FecundityTransitivity",
-						  "GrowthTransitivity", "RelativeHierarchy", "RestartTime", "CompetitionFile", "MinPersistence", NULL};
+						  "GrowthTransitivity", "RelativeHierarchy", "ContinueTime", "CompetitionFile", "MinPersistence", "NumThreads", NULL};
 
 	int i = 0;
 	int line_num = 0;
-	int pre_trim_size = 0;
 	int valid;
 	std::string holdstr;
 	std::string checkstr;
@@ -94,9 +93,9 @@ void Simulation::setRandomSeeds() {
 
 	int i;
 	std::random_device r;
-	seeds[0] = 100; //static_cast<unsigned int>(std::chrono::high_resolution_clock::now().time_since_epoch().count());
+	seeds[0] = static_cast<unsigned int>(std::chrono::high_resolution_clock::now().time_since_epoch().count());
 	for (i = 1; i < 5; i++)
-		seeds[i] = i * 1000; // (unsigned int) r(); 
+		seeds[i] = (unsigned int) r(); 
 
 	return;
 }
@@ -112,11 +111,10 @@ void Simulation::seedGenerator() {
 	return;
 }
 
-void Simulation::getParameter(int *value, std::string parameter_name, int essential ) {
+int Simulation::getParameter(int *value, std::string parameter_name, int essential ) {
 	/* sets value of parameter given the parameter name in parameter file, 'parameter.dat' 
 	file is already open from previous method, checkInputFormat. method for integer parameters. */
 
-	int i;
 	int set = 0;
 	int check = 0;
 	std::string compstr;
@@ -174,7 +172,7 @@ void Simulation::getParameter(int *value, std::string parameter_name, int essent
 		exit(0);
 	}
 	pfile.close();
-	return;
+	return set;
 }
 
 
@@ -182,7 +180,6 @@ void Simulation::getParameter(double *value, std::string parameter_name, int ess
 	/* sets value of parameter given the parameter name in parameter file, 'parameter.dat' 
 	file is already open from previous method, checkInputFormat. method for double parameters. */
 
-	int i;
 	int set = 0;
 	int check = 0;
 	std::string compstr;
@@ -258,7 +255,6 @@ void Simulation::getParameter(std::string *value, std::string parameter_name, in
 	/* sets value of parameter given the parameter name in parameter file, 'parameter.dat' 
 	file is already open from previous method, checkInputFormat. method for string parameters. */
 
-	int i;
 	int set = 0;
 	int check = 0;
 	std::string compstr;
@@ -559,7 +555,6 @@ void Simulation::setRandomParameter(double *parameter_value, int num_species, st
 	// type = 4 -> essential, must be non-negative
 
 	int i;
-	double sum = 0.;
 	double *mean = new double[num_species];
 	double *sdev = new double[num_species];
 	if (!mean || !sdev) {
