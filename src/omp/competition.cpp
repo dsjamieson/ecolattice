@@ -12,7 +12,7 @@
 
 #include "simulation.hpp"
 
-void Simulation::initializeUniformCompetition(){
+void Simulation::initializeUniformCompetition(void){
 	/* set up growth (competition_growth) and fecundity (competition_fecundity) 
 	competition matrices as random draws from a uniform distribution */
 
@@ -36,7 +36,7 @@ void Simulation::initializeUniformCompetition(){
 }
 
 
-void Simulation::initializeTNormalCompetition() {
+void Simulation::initializeTNormalCompetition(void) {
 	/* set up growth (competition_growth) and fecundity (competition_fecundity) 
 	competition matrices as random draws from a truncated normal distribution */
 
@@ -75,7 +75,7 @@ void Simulation::initializeTNormalCompetition() {
 }
 
 
-void Simulation::initializeUniformCorrelatedCompetition(){
+void Simulation::initializeUniformCorrelatedCompetition(void){
 	/* set up growth (competition_growth) and fecundity (competition_fecundity)
 	competition matrices as random draws from a uniform distribution,
 	and manipulate matrices so that they are correlated or anticorrelated.
@@ -124,7 +124,7 @@ void Simulation::initializeUniformCorrelatedCompetition(){
 }
 
 
-void Simulation::initializeTNormalCorrelatedCompetition(){
+void Simulation::initializeTNormalCorrelatedCompetition(void){
 	/* set up growth (competition_growth) and fecundity (competition_fecundity)
 	competition matrices as random draws from a truncated normal
 	distribution, and manipulate matrices so that they are correlated or 
@@ -191,7 +191,7 @@ void Simulation::initializeTNormalCorrelatedCompetition(){
 	return;
 }
 
-void Simulation::imbalanceCompetition() {
+void Simulation::imbalanceCompetition(void) {
 	/* manipulate imbalance of (already initialized) growth and fecundity competition matrices.
 	imbalance is governed by 'imbalance' parameter, the Bernoulli probability of increasing
 	the imbalance of paired elements. imbalance refers to one species having a greater effect 
@@ -255,7 +255,7 @@ void Simulation::imbalanceCompetition() {
 }
 
 
-void Simulation::getFecundityGrowthCorrelation() {
+void Simulation::getFecundityGrowthCorrelation(void) {
 	/* calculate Pearson's product moment correlation of interactions between growth and fecundity competition matrices.
 	the correlation of these matrices is a metric of whether there are trade-offs between growth and reproduction. 
 	if positive, species good at growing are also good at reproducing, and if negative, there is a trade-off. */
@@ -296,7 +296,7 @@ void Simulation::getFecundityGrowthCorrelation() {
 }
 
 
-void Simulation::getImbalanceMean() {
+void Simulation::getImbalanceMean(void) {
 	/* calculate imbalance of paired elements in growth an fecundity competition matrices.
 	will return one value of mean imbalance for each competition type. imbalance occurs between
 	species pairs when the first species has a larger effect on the second than the second has on 
@@ -321,7 +321,7 @@ void Simulation::getImbalanceMean() {
 	return;
 }
 
-void Simulation::getDiscreteTransitivity() {
+void Simulation::getDiscreteTransitivity(void) {
 	/* calculate discrete transitivity of growth and fecundity competition matrices.
 	discrete transitivity is measured as  the relative intransitivity index, a metric
 	that uses the competitive outcomes matrix (a binary matrix). completely transitive matrices 
@@ -337,13 +337,8 @@ void Simulation::getDiscreteTransitivity() {
 	double fecundity_variance = 0.;
 	double growth_variance = 0.;
 
-	int *top_rank = new int[num_species];
-	int *bottom_rank = new int[num_species];
-	if (!top_rank || !bottom_rank ) {
-		fprintf(stderr, "Error, unable to allocate memory for transitivity calculation\n");
-		exit(-1);
-	}
-
+	std::vector<int> top_rank(num_species);
+	std::vector<int> bottom_rank(num_species);
 	for (i = 0; i < num_species; i++ ) {
 		fecundity_rank[i] = 0.;
 		growth_rank[i] = 0.;
@@ -378,9 +373,6 @@ void Simulation::getDiscreteTransitivity() {
 	top_variance = top_variance / (num_species - 1);
 	bottom_variance = bottom_variance / (num_species - 1);
 
-	delete[] top_rank;
-	delete[] bottom_rank;
-	
 	// create competitive outcomes matrix for growth and fecundity competition matrices. 
 	// for matrix index i, j: 1 if j outcompetes i, and 0 if i outcompetes j
 	for (i = 0; i < num_species; i++) {
@@ -433,7 +425,7 @@ void Simulation::getDiscreteTransitivity() {
 }
 
 
-void Simulation::getContinuousTransitivity() {
+void Simulation::getContinuousTransitivity(void) {
 	/* calculate continous transitivity of growth and fecundity competition matrices.
 	continous transitivity uses the sum of pairwise elements scaled by the range over which
 	competition occurs. the magnitude is equal for pairwise elements, but the species that 
@@ -463,7 +455,7 @@ void Simulation::getContinuousTransitivity() {
 }
 
 
-void Simulation::getDiscreteFecundityTransitivity() {
+void Simulation::getDiscreteFecundityTransitivity(void) {
 	/* calculate the ranks of the fecundity competition matrix. used when manipulating transitivity
 	in method 'setCompetitionTransitivity'. */
 
@@ -502,7 +494,7 @@ void Simulation::getDiscreteFecundityTransitivity() {
 }
 
 
-void Simulation::getDiscreteGrowthTransitivity() {
+void Simulation::getDiscreteGrowthTransitivity(void) {
 	/* calculate the ranks of the growth competition matrix. used when manipulating transitivity
 	in method 'setCompetitionTransitivity'. */
 
@@ -538,7 +530,7 @@ void Simulation::getDiscreteGrowthTransitivity() {
 }
 
 
-void Simulation::setCompetitionTransitivity() {
+void Simulation::setCompetitionTransitivity(void) {
 	/* manipulate the transitivity of fecundity and growth competition matrices. this is controlled by the
 	parameters 'fecundity_transitivity_type' and 'growth_transitivity_type.' if these are set to 1, 
 	the competition matrices will be completely transitive. if both are set to -1, the competition matrices
@@ -548,11 +540,7 @@ void Simulation::setCompetitionTransitivity() {
 	int i, j;
 	int ih, jh, complete;
 	double hold;
-	int *desired_fecundity_rank = new int[num_species];
-	if(!desired_fecundity_rank) {
-		fprintf(stderr, "Error, unable to allocate memory to initialize transitive competition\n");
-		exit(-1);
-	}
+	std::vector<int> desired_fecundity_rank(num_species);
 
 	// set desired pattern of ranks (number of species outcompeted)
 	// completely transitive
@@ -596,11 +584,7 @@ void Simulation::setCompetitionTransitivity() {
   	// calculate ranks of observed fecundity matrix, to be compared to desired ranks
 	getDiscreteFecundityTransitivity();
 
-	int * fecundity_diff = new int[num_species];
-	if (!fecundity_diff) {
-		fprintf(stderr, "Error, unable to allocate memory to set transitivity difference array\n");
-		exit(-1);
-	}
+	std::vector<int>  fecundity_diff(num_species);
 
 	// calculate the difference between the observed ranks and the desired ranks
 	// fecundity_diff[i]: number of additional species that species i needs to beat if negative
@@ -688,9 +672,6 @@ void Simulation::setCompetitionTransitivity() {
 	getDiscreteFecundityTransitivity();
 	getDiscreteGrowthTransitivity();
 
-	delete[] desired_fecundity_rank;
-	delete[] fecundity_diff;
-
 	// calculate ranks of manipulated fecundity competition matrix
 	getDiscreteTransitivity();
 
@@ -715,7 +696,7 @@ void Simulation::setCompetitionTransitivity() {
 			}
 		}
 		if (fecundity_growth_relative_hierarchy == 0) {
-			shuffleMatrix(competition_growth, num_species);
+			shuffleMatrix(competition_growth);
 		}
 	}
 	else if (growth_transitivity_type != 0) {
@@ -727,55 +708,47 @@ void Simulation::setCompetitionTransitivity() {
 	return;
 }
 
-void Simulation::shuffleArray(int *array, int n) {
-    if (n > 1) {
-        int i;
-        for (i = 0; i < n - 1; i++) {
-          int j = i + getRandom() / (global_random_generator.max() / (n - i) + 1);
-          int t = array[j];
-          array[j] = array[i];
-          array[i] = t;
+void Simulation::shuffleArray(std::vector<int> & t_vector) {
+    if (t_vector.size() > 1) {
+        unsigned long i;
+        for (i = 0; i < t_vector.size() - 1; i++) {
+          int j = i + getRandom() / ( static_cast<double>(std::mt19937::max() / (t_vector.size() - i) + 1);
+          int t = t_vector[j];
+          t_vector[j] = t_vector[i];
+          t_vector[i] = t;
         }
     }
 	return;
 }
 
-void Simulation::shuffleMatrix(double **array, int n) {
-	int i, j;
+void Simulation::shuffleMatrix(std::vector<std::vector<double>> & t_vector) {
+	unsigned long i, j;
 
-	double ** hold_matrix = new double*[n];
-	for (i = 0; i < n; i++) {
-		hold_matrix[i] = new double[n];
-		for (j = 0; j < n; j++) {
-			hold_matrix[i][j] = array[i][j];
+	std::vector<std::vector<double>> hold_matrix(t_vector.size());
+	for (i = 0; i < t_vector.size(); i++) {
+		hold_matrix[i].resize(t_vector[i].size());
+		for (j = 0; j < t_vector.size(); j++) {
+			hold_matrix[i][j] = t_vector[i][j];
 		}
 	}
 
-	int * shuffle_index = new int[n];
-	for (i = 0; i < n; i++) {
+	std::vector<int> shuffle_index(t_vector.size());
+	for (i = 0; i < t_vector.size(); i++) {
 		shuffle_index[i] = i;
 	}
 
-	shuffleArray(shuffle_index, n);
+	shuffleArray(shuffle_index);
 
-	for (i = 0; i < n; i++) {
-		for (j = 0; j < n; j++) {
-			array[shuffle_index[i]][shuffle_index[j]] = hold_matrix[i][j];
+	for (i = 0; i < t_vector.size(); i++) {
+		for (j = 0; j < t_vector.size(); j++) {
+			t_vector[shuffle_index[i]][shuffle_index[j]] = hold_matrix[i][j];
 		}
 	}	
-
-	for (i = 0; i < n; i++) {
-		delete [] hold_matrix[i];
-	}
-	delete [] hold_matrix;
-
-	delete [] shuffle_index;
-
 	return;
 }
 
 
-void Simulation::setGrowthCompetitionTransitivity() {
+void Simulation::setGrowthCompetitionTransitivity(void) {
 	/* this method is called in 'setCompetitionTransitivity' after the fecundity transitivity matrix is set, 
 	and only if the growth transitivity type is not the same as fecundity. this method sets growth competition matrix
 	 transitivity according to parameter 'growth_transitivity_type.' */
@@ -783,11 +756,7 @@ void Simulation::setGrowthCompetitionTransitivity() {
 	int i, j;
 	int ih, jh, complete;
 	double hold;
-	int *desired_growth_rank = new int[num_species];
-	if (!desired_growth_rank) {
-		fprintf(stderr, "Error, unable to allocate memory to initialize transitive competition\n");
-		exit(-1);
-	}
+	std::vector<int> desired_growth_rank(num_species);
 	// set desired pattern of ranks
 	// completely transitive
 	if (growth_transitivity_type == 1.) {
@@ -822,11 +791,7 @@ void Simulation::setGrowthCompetitionTransitivity() {
   	// calculate ranks of observed growth matrix, to be compared to desired ranks
 	getDiscreteGrowthTransitivity();
 
-	int * growth_diff = new int[num_species];
-	if (!growth_diff) {
-		fprintf(stderr, "Error, unable to allocate memory for setting transitivity difference array\n");
-		exit(-1);
-	}
+	std::vector<int> growth_diff(num_species);
 
 	// calculate the difference between the observed ranks and the desired ranks
 	// growth_diff[i]: number of additional species that species i needs to beat if negative
@@ -913,22 +878,17 @@ void Simulation::setGrowthCompetitionTransitivity() {
 		}
 	}
 
-	shuffleMatrix(competition_growth, num_species);
-
-	delete[] desired_growth_rank;
-	delete[] growth_diff;
+	shuffleMatrix(competition_growth);
 
 	return;
 }
 
 
-double Simulation::getRandomUniformReal(double lower_bound, double upper_bound) {
-
-	return lower_bound + (upper_bound - lower_bound) * ( (double) getRandom() ) / ( (double) global_random_generator.max() );
-
+double Simulation::getRandomUniformReal(double t_lower_bound, double t_upper_bound) {
+	return t_lower_bound + (t_upper_bound - t_lower_bound) * ( (double) getRandom() ) / static_cast<double>(std::mt19937::max()) ;
 }
 
-double Simulation::getRandomNormal(double mean, double sdev) {
+double Simulation::getRandomNormal(double t_mean, double t_sdev) {
 
 	static bool hasSpare = false;
 	static double spare;
@@ -936,21 +896,20 @@ double Simulation::getRandomNormal(double mean, double sdev) {
 
 	if(hasSpare) {
 		hasSpare = false;
-		return mean + sdev * spare;
+		return t_mean + t_sdev * spare;
 	}
 
 	hasSpare = true;
-	while( (s >=1.0) || (s==0) ) {
-		u = ( (double) getRandom() ) / ( (double) global_random_generator.max() ) * 2.0 - 1.0;
-		v = ( (double) getRandom() ) / ( (double) global_random_generator.max() ) * 2.0 - 1.0;
+	while( (s >= 1.0) || (s == 0) ) {
+		u = ( (double) getRandom() ) / static_cast<double>(std::mt19937::max()) * 2.0 - 1.0;
+		v = ( (double) getRandom() ) / static_cast<double>(std::mt19937::max()) * 2.0 - 1.0;
 		s = u * u + v * v;
 	}
 
 	s = sqrt(-2.0 * log(s) / s);
 	spare = v * s;
 
-	return mean + sdev * u * s;
-
+	return t_mean + t_sdev * u * s;
 }
 
 

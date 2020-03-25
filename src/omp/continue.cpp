@@ -49,7 +49,7 @@ void Simulation::saveDispersal(int time_step) {
 }
 
 
-void Simulation::loadLattice() {
+void Simulation::loadLattice(void) {
 	/* load the lattice, or the species locations, from the previous simulation (simulation reloaded based on
 	"ContinueTime." */
 
@@ -125,7 +125,7 @@ void Simulation::loadLattice() {
 
 
 
-void Simulation::loadDispersal() {
+void Simulation::loadDispersal(void) {
 	/* load the dispersal lattice, or the seed locations, from the previous simulation. simulation reloaded based on
 	"ContinueTime." */
 
@@ -224,7 +224,7 @@ void Simulation::loadDispersal() {
 }
 
 
-void Simulation::loadSeeds() {
+void Simulation::loadSeeds(void) {
 	/* if simulation in restarted, then the seeds from the previous simulation are read in from the competition file,
 	in the format, "OutfileBase_competition.csv" */
 
@@ -307,7 +307,7 @@ void Simulation::loadSeeds() {
 
 
 
-void Simulation::loadCompetition() {
+void Simulation::loadCompetition(void) {
 	/* load the growth and fecundity competition matrices as well as parameters, including species occupancy,
 	survival, and dispersal, from the previous simulation. written specifically to work with the way the 
 	competition file output is formatted. */
@@ -321,15 +321,9 @@ void Simulation::loadCompetition() {
 	const char *names[] = {"SpeciesOccupancy", "JuvenileSurvival",  "AdultSurvival",  "MaximumCompetition",
 						     "DispersalProbability", "DispersalLength", "Fecundity"};
 
-	double **parameters = new double*[7];
-
-	parameters[0] = species_occupancy;
-	parameters[1] = juvenile_survival_probability;
-	parameters[2] = adult_survival_probability;
-	parameters[3] = maximum_competition;
-	parameters[4] = dispersal_probability;
-	parameters[5] = dispersal_length;
-	parameters[6] = intrinsic_fecundity;
+	std::vector<std::vector<double>> parameters(7);
+	for(int i = 0; i < 7; i++)
+		parameters.resize(num_species);
 
 	std::ifstream competition_file;
 	competition_file.open(competition_filename);
@@ -393,7 +387,7 @@ void Simulation::loadCompetition() {
 						type = 3;
 					if (line_num > 12)
 						type = 4;
-					setRandomParameter(parameters[(line_num - 4) / 2], num_species, name, type);
+					setRandomParameter(parameters[(line_num - 4) / 2], name, type);
 					break;
 				}
 			}
@@ -554,15 +548,20 @@ void Simulation::loadCompetition() {
 		exit(0);
 
 	}
-
-	delete[] parameters;
-
+    for(int i = 0; i < num_species; i++ ) {
+		species_occupancy[i] = parameters[0][i];
+		juvenile_survival_probability[i] = parameters[1][i];
+		adult_survival_probability[i] = parameters[2][i];
+		maximum_competition[i] = parameters[3][i];
+		dispersal_probability[i] = parameters[4][i];
+		dispersal_length[i] = parameters[5][i];
+		intrinsic_fecundity[i] = parameters[6][i];
+    }
 	competition_file.close();
-
 	return;
 }
 
 
-int Simulation::getContinueTime() {
+int Simulation::getContinueTime(void) {
 	return continue_time;
 }

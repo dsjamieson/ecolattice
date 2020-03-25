@@ -22,7 +22,7 @@ SiteStepper::SiteStepper(Simulation & t_sim, std::mt19937 & t_random_generator, 
 	neighborhood_lengths.resize(num_species);
 	neighborhood_sizes.resize(num_species);
 	neighborhood_abundances.resize(num_species);
-	for(k = 0; k < num_species; k++) {
+	for (k = 0; k < num_species; k++) {
 		deltas[k] = sim->getDelta(k);
 		neighborhood_lengths[k] = 2 * deltas[k] + 1;
 		neighborhood_sizes[k] = neighborhood_lengths[k] * neighborhood_lengths[k] - 1;
@@ -30,7 +30,7 @@ SiteStepper::SiteStepper(Simulation & t_sim, std::mt19937 & t_random_generator, 
 	initializeDispersals();
 }
 
-void SiteStepper::initializeDispersals() {
+void SiteStepper::initializeDispersals(void) {
 
 	// fecundity, the number of seeds produced by the focal individuals, is spread over the entire matrix
 	// the number of seeds at each site is an exponential function of Euclidean distance
@@ -38,18 +38,16 @@ void SiteStepper::initializeDispersals() {
 	// dispersal can occur within two times the dispersal length of the species
 	// setting a dispersal limit reduces size of distance_probability array and improves speed		
 
-
-
 	double distance;
 	std::vector<double> dispersal_sums(num_species, 0.);
 	dispersals.resize(num_species);
-	for(k = 0; k < num_species; k++) {
+	for (k = 0; k < num_species; k++) {
 		dispersals[k].resize((int) round(2*sim->getDispersalLength(k) + 1.));
-		for(unsigned long i = 0; i < dispersals[k].size(); i++) {
+		for (unsigned long i = 0; i < dispersals[k].size(); i++) {
 			dispersals[k][i].resize(dispersals[k].size() - 1);
-			for(unsigned long j = 0; j < dispersals[k][i].size(); j++) {
+			for (unsigned long j = 0; j < dispersals[k][i].size(); j++) {
 				distance = sqrt((double) i * i + (j + 1) * (j + 1));
-				if(round(distance) <= dispersals[k].size() - 1) {
+				if (round(distance) <= dispersals[k].size() - 1) {
 					dispersals[k][i][j] = exp(log(sim->getDispersalProbability(k)) * distance / sim->getDispersalLength(k));
 					dispersal_sums[k] += 4. * dispersals[k][i][j];
 				}
@@ -59,8 +57,8 @@ void SiteStepper::initializeDispersals() {
 			}
 		}
 
-		for(unsigned long i = 0; i < dispersals[k].size(); i++) {
-			for(unsigned long j = 0; j < dispersals[k][i].size(); j++) {
+		for (unsigned long i = 0; i < dispersals[k].size(); i++) {
+			for (unsigned long j = 0; j < dispersals[k][i].size(); j++) {
 					dispersals[k][i][j] *= sim->getIntrinsicFecundity(k) / dispersal_sums[k];
 			}
 		}
@@ -109,7 +107,7 @@ void SiteStepper::updateEmptySite(void) {
 	bernoulli_distribution.param((std::bernoulli_distribution::param_type) bernoulli_probability);
 	if (bernoulli_distribution(sim->generateRandom(*random_count, *random_generator))) {
 		// Change when vectors are included for Simulation
-		for(k = 0; k < num_species; k++)
+		for (k = 0; k < num_species; k++)
 			discrete_distribution_weights[k] = sim->getDispersal(i,j,k);
 		discrete_distribution.param(std::discrete_distribution<int>::param_type(discrete_distribution_weights.begin(), discrete_distribution_weights.end()));
 		l = discrete_distribution(sim->generateRandom(*random_count, *random_generator));

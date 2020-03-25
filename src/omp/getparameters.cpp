@@ -10,7 +10,7 @@
 
 #include "simulation.hpp"
 
-void Simulation::checkInputFormat() {
+void Simulation::checkInputFormat(void) {
 	/* check 'parameters.dat' for all parameters and correct format. can remove commented lines from parameters file, where comments are specified with '#'. */
 
 	const char *names[] = {"LatticeSize", "Subdivision", "Species", "Delta", "MaxTimeStep", "InitialOccupancy",
@@ -87,7 +87,7 @@ void Simulation::checkInputFormat() {
 }
 
 
-void Simulation::setRandomSeeds() {
+void Simulation::setRandomSeeds(void) {
 	/* draw random seeds from random device (5) and system clock (1). system clock used for systems 
 	that do not have random device capability. */
 
@@ -100,7 +100,7 @@ void Simulation::setRandomSeeds() {
 	return;
 }
 
-void Simulation::seedGenerator() {
+void Simulation::seedGenerator(void) {
 	/* create a random vector of seeds (a seed sequence) given the seeds specified randomly or in
 	the parameter file (restart simulation). seeds fed to the global RNG. */
     std::seed_seq seq(seeds, seeds + 5);
@@ -111,7 +111,7 @@ void Simulation::seedGenerator() {
 	return;
 }
 
-int Simulation::getParameter(int *value, std::string parameter_name, int essential ) {
+int Simulation::getParameter(int & value, std::string parameter_name, int essential ) {
 	/* sets value of parameter given the parameter name in parameter file, 'parameter.dat' 
 	file is already open from previous method, checkInputFormat. method for integer parameters. */
 
@@ -142,7 +142,7 @@ int Simulation::getParameter(int *value, std::string parameter_name, int essenti
 			std::istringstream pstrings(line);
 			if (pstrings >> value_string) {
 				if (value_string.find_first_not_of("0123456789") == std::string::npos) {
-					*value = stoi(value_string);
+					value = stoi(value_string);
 					set = 1;
 				}
 				else {
@@ -176,7 +176,7 @@ int Simulation::getParameter(int *value, std::string parameter_name, int essenti
 }
 
 
-void Simulation::getParameter(double *value, std::string parameter_name, int essential) {
+void Simulation::getParameter(double & value, std::string parameter_name, int essential) {
 	/* sets value of parameter given the parameter name in parameter file, 'parameter.dat' 
 	file is already open from previous method, checkInputFormat. method for double parameters. */
 
@@ -208,7 +208,7 @@ void Simulation::getParameter(double *value, std::string parameter_name, int ess
 			if (pstrings >> value_string) {
 				if (value_string.find_first_not_of("-0123456789.e") == std::string::npos) {
 					try {
-						*value = stod(value_string);
+						value = stod(value_string);
 						set = 1;
 					}
 					catch (...) {
@@ -251,7 +251,7 @@ void Simulation::getParameter(double *value, std::string parameter_name, int ess
 }
 
 
-void Simulation::getParameter(std::string *value, std::string parameter_name, int essential) {
+void Simulation::getParameter(std::string & value, std::string parameter_name, int essential) {
 	/* sets value of parameter given the parameter name in parameter file, 'parameter.dat' 
 	file is already open from previous method, checkInputFormat. method for string parameters. */
 
@@ -277,13 +277,13 @@ void Simulation::getParameter(std::string *value, std::string parameter_name, in
 					fprintf(stderr, "Error, multiple lines given for parameter %s\n", parameter_name.c_str());
 				exit(0);
 			}
-			*value = trimString(line.substr(line.find("=") + 1, line.length())) ;
-			if (value -> size() == 0 && essential == 1) {
+			value = trimString(line.substr(line.find("=") + 1, line.length())) ;
+			if (value.size() == 0 && essential == 1) {
 				if (id==0)
 					fprintf(stderr, "Error, no value for %s given\n", parameter_name.c_str());
 				exit(0);
 			}
-			std::istringstream checkstrings(value -> c_str());
+			std::istringstream checkstrings(value.c_str());
 			checkstrings >> compstr;
 			if (checkstrings >> compstr) {		
 				if (id == 0)
@@ -305,13 +305,13 @@ void Simulation::getParameter(std::string *value, std::string parameter_name, in
 }
 
 
-void Simulation::getParameter(int *value_array, int n, std::string parameter_name, int essential) {
+void Simulation::getParameter(std::vector<int> & value_array, std::string parameter_name, int essential) {
 	/* sets value of parameter given the name in parameter file, which is an argument for Simulation.
 	file is already open from previous method, checkInputFormat. method for array parameters.
 	this method has some unique requirements, some arrays require positive integers [0, ) (essential
 	type 2) and will return an error if not satisfied. */
 
-	int i;
+	unsigned long i;
 	int set = 0;
 	int check = 0;
 
@@ -340,7 +340,7 @@ void Simulation::getParameter(int *value_array, int n, std::string parameter_nam
 			line = trimString(line.substr(line.find("=") + 1, line.length()));
 			std::istringstream pstrings(line);
 			while (pstrings >> pstring) {
-				if (i == n + 1){
+				if (i == value_array.size() + 1){
 					if (id == 0)
 						fprintf(stderr, "Error, Number of values for parameter %s must be 1 or number of species\n", parameter_name.c_str());
 					exit(0);
@@ -381,11 +381,11 @@ void Simulation::getParameter(int *value_array, int n, std::string parameter_nam
 			}			
 			if (i == 1){
 
-				for (i = 1; i < n; i++)
+				for (i = 1; i < value_array.size(); i++)
 					value_array[i] = value_array[0];
 
 			}				
-			else if (i != n && i!= 0){
+			else if (i != value_array.size() && i!= 0){
 				if (id == 0)
 					fprintf(stderr, "Error, Number values for %s must be 1 or Species\n", parameter_name.c_str());
 				exit(0);
@@ -404,13 +404,13 @@ void Simulation::getParameter(int *value_array, int n, std::string parameter_nam
 }
 
 
-void Simulation::getParameter(double *value_array, int n, std::string parameter_name, int essential) {
+void Simulation::getParameter(std::vector<double> & value_array, std::string parameter_name, int essential) {
 	/* sets value of parameter given the name in parameter file, which is an argument for Simulation.
 	file is already open from previous method, checkInputFormat. method for array parameters.
 	this method has some unique requirements, some arrays require probabilities [0, 1] (essential
 	type 2), weights [0, ) (type 3), or non-negative values [0, ) (type 4) , and will return errors if not satisfied. */
 
-	int i;
+	unsigned long i;
 	int set = 0;
 	int check = 0;
 	double value_sum = 0.;
@@ -440,7 +440,7 @@ void Simulation::getParameter(double *value_array, int n, std::string parameter_
 			line = trimString(line.substr(line.find("=") + 1, line.length()));
 			std::istringstream pstrings(line);
 			while (pstrings >> pstring) {
-				if (i == n + 1){
+				if (i == value_array.size() + 1){
 					if (id == 0)
 						fprintf(stderr, "Error, Number values for %s must be 1 or number of species\n", parameter_name.c_str());
 					exit(0);
@@ -479,7 +479,6 @@ void Simulation::getParameter(double *value_array, int n, std::string parameter_
 						fprintf(stderr, "Error, species specific parameter %s must be non-negative\n", parameter_name.c_str());
 					exit(0);
 				}
-			
 
 				i++;
 
@@ -497,13 +496,13 @@ void Simulation::getParameter(double *value_array, int n, std::string parameter_
 					exit(0);
 				}
 
-				for (i = 1; i < n; i++)
+				for (i = 1; i < value_array.size(); i++)
 					value_array[i] = value_array[0];
 
-				value_sum = value_array[0]*n;
+				value_sum = value_array[0]*value_array.size();
 
 			}				
-			else if (i != n && i!= 0){
+			else if (i != value_array.size() && i!= 0){
 				if (id == 0)
 					fprintf(stderr, "Error, Number values for %s must be 1 or Species\n", parameter_name.c_str());
 				exit(0);
@@ -514,7 +513,7 @@ void Simulation::getParameter(double *value_array, int n, std::string parameter_
 
 	// values treated as weights if essential type = 3
 	if(essential == 3) {
-		for(i = 0; i < n; i++)
+		for(i = 0; i < value_array.size(); i++)
 			value_array[i] /= value_sum;
 	}
 	
@@ -530,12 +529,12 @@ void Simulation::getParameter(double *value_array, int n, std::string parameter_
 
 
 
-void Simulation::initializeNormalRandomArray(double *array, double *mean, double *sdev, int length) {
+void Simulation::initializeNormalRandomArray(std::vector<double> & array, std::vector<double> & mean, std::vector<double> & sdev) {
 	/* for parameters that are parameters of a normal distribution (e.g. intrinsic fecundity). 
 	this method takes draws from normal distributions defined by the mean and standard deviation arrays. */
 
-	int i;
-	for (i = 0; i < length; i++)
+	unsigned long i;
+	for (i = 0; i < array.size(); i++)
 		array[i] = fabs(getRandomNormal(mean[i], sdev[i]));
 
 	return;
@@ -543,7 +542,7 @@ void Simulation::initializeNormalRandomArray(double *array, double *mean, double
 }
 
 
-void Simulation::setRandomParameter(double *parameter_value, int num_species, std::string parameter_name, int type) {
+void Simulation::setRandomParameter(std::vector<double> & parameter_value, std::string parameter_name, int type) {
 	/* some parameters in the data file  are specified as parameters of a normal distribution (e.g., intrinsic fecundity). 
 	this method initializes the mean and standard deviation arrays to be sent to the method 'initializeNormalArray' which 
 	will initialize the actual array of random draws. this method is specific to parameters that are probabilities. */
@@ -554,25 +553,12 @@ void Simulation::setRandomParameter(double *parameter_value, int num_species, st
 	// type = 3 -> essential, treated as weights
 	// type = 4 -> essential, must be non-negative
 
-	int i;
-	double *mean = new double[num_species];
-	double *sdev = new double[num_species];
-	if (!mean || !sdev) {
-		fprintf(stderr, "Error, unable to allocate memory for setting parameter %s\n", parameter_name.c_str());
-		exit(-1);
-	}
-	for (i = 0; i < num_species; i++) {
-		mean[i] = 0.;
-		sdev[i] = 0.;
-	}
+	std::vector<double> mean(num_species, 0.);
+	std::vector<double> sdev(num_species, 0.);
+	getParameter(mean, parameter_name, type);
+	getParameter(sdev, parameter_name + "Sdev", 0);
 
-	getParameter(mean, num_species, parameter_name, type);
-	getParameter(sdev, num_species, parameter_name + "Sdev", 0);
-
-	initializeNormalRandomArray(parameter_value, mean, sdev, num_species);
-
-	delete[] mean;
-	delete[] sdev;
+	initializeNormalRandomArray(parameter_value, mean, sdev);
 
 	return;
 

@@ -16,11 +16,11 @@ class Simulation {
 	public:
 		Simulation(std::string filename, int p_id);
 		void run(void);
-		int getLatticeSize();
-		int getNumSpecies();
+		int getLatticeSize(void);
+		int getNumSpecies(void);
 		void printSpeciesAbundance(void);
 		void printNextLattice(void);
-		double getGerminationProbability();
+		double getGerminationProbability(void);
 		double getAdultSurvivalProbability(int s);
 		double getJuvenileSurvivalProbability(int s);
 		double getCompetitionGrowth(int s1, int s2);
@@ -30,12 +30,12 @@ class Simulation {
 		double getDispersalProbability(int s);
 		double getIntrinsicFecundity(int s);
 		double getMaximumCompetition(int s);
-		int getMaxTimeStep();
+		int getMaxTimeStep(void);
 		int getSite(int i, int j);
 		int getNextSite(int i, int j);
 		double getDispersal(int i, int j, int s);
 		double getNextDispersal(int i, int j, int s);
-		int getContinueTime();
+		int getContinueTime(void);
 		unsigned int getSeed(int i);
 
 		void setSite(int i, int j, int s);
@@ -46,46 +46,45 @@ class Simulation {
 		void setDispersal(int i, int j, int s, double t);
 		void addDispersal(int i, int j, int s, double t);
 		void addNextDispersal(int i, int j, int s, double t);
-		void resetLattice();
-		void resetNextLattice();
-		void setSeed(int i, unsigned int s);
+		void resetLattice(void);
+		void resetNextLattice(void);
+		void setSeed(int t_i, unsigned int t_s);
 
-		void updateSingleSite(int i, int j);
-		void discardRandom(unsigned long long n);
-		unsigned long long getRandomCount();
-		void saveLattice(int time_step);
-		void saveCompetition();
-		void saveDispersal(int time_step);
-		void nextToThis();
-		double getRandomUniformReal(double lower_bound, double upper_bound);
-		double getRandomNormal(double mean, double sdev);
-		int getPersistence();
-		int getMinPersistence();
-		void setRandomSeeds();
-		void reinitializeSimulation(int time_step);
+		void discardRandom(unsigned long long t_num_discard);
+		unsigned long long getRandomCount(void);
+		void saveLattice(int t_time_step);
+		void saveCompetition(void);
+		void saveDispersal(int t_time_step);
+		void nextToThis(void);
+		double getRandomUniformReal(double t_lower_bound, double t_upper_bound);
+		double getRandomNormal(double t_mean, double t_sdev);
+		int getPersistence(void);
+		int getMinPersistence(void);
+		void setRandomSeeds(void);
+		void reinitializeSimulation(int t_time_step);
 
-		void seedGenerator(std::mt19937& this_random_generator);
-		std::mt19937& generateRandom(unsigned long long& this_random_count, std::mt19937& this_random_generator);
-		void discardRandom(unsigned long long n, unsigned long long& this_random_count, std::mt19937& this_random_generator);
-		unsigned long long getMaxRandomCount();
+		void seedGenerator(std::mt19937& t_random_generator);
+		std::mt19937& generateRandom(unsigned long long& t_random_count, std::mt19937& t_random_generator);
+		void discardRandom(unsigned long long t_num_discard, unsigned long long & t_random_count, std::mt19937& t_random_generator);
+		unsigned long long getMaxRandomCount(void);
 
 	private:
 
 		// Lattice, dispersal, and time step parameters
 		unsigned int seeds[5];
-		int *species_abundance;
+		std::vector<int> species_abundance;
 		std::mt19937 global_random_generator;
 		std::string parameter_filename, outfile_base, outfile_dir;
 		int id, num_species, lattice_size, num_steps, max_time_step, continue_time, min_persistence, num_restarts, num_threads;
 		unsigned long long random_count, max_random_count;
 		double germination_probability, initial_occupancy;
-		int **lattice, **next_lattice;
-		double ***dispersal_lattice, ***next_dispersal_lattice;
+		std::vector<std::vector<int>> lattice, next_lattice;
+		std::vector<std::vector<std::vector<double>>> dispersal_lattice, next_dispersal_lattice;
 
 		// Species specific parameters
-		int *delta, *neighborhood_size;
-		double *species_occupancy, *juvenile_survival_probability, *adult_survival_probability;
-		double *maximum_competition, *dispersal_probability, *dispersal_length, *intrinsic_fecundity;
+		std::vector<int> delta, neighborhood_size;
+		std::vector<double> species_occupancy, juvenile_survival_probability, adult_survival_probability;
+		std::vector<double> maximum_competition, dispersal_probability, dispersal_length, intrinsic_fecundity;
 	
 		// Competition parameters
 		std::string competition_filename, competition_type;
@@ -94,56 +93,55 @@ class Simulation {
 		double competition_correlation, imbalance, fecundity_transitivity_type, growth_transitivity_type, fecundity_growth_relative_hierarchy;
 		double fecundity_imbalance_mean, growth_imbalance_mean, fecundity_growth_correlation;
 		double fecundity_relative_intransitivity, growth_relative_intransitivity;
-		double **competition_fecundity, **competition_growth;
-		double **fecundity_transitivity, **growth_transitivity; 
-		double *fecundity_rank, *growth_rank;
+		std::vector<std::vector<double>> competition_fecundity, competition_growth, fecundity_transitivity, growth_transitivity; 
+		std::vector<double> fecundity_rank, growth_rank;
 
-		void initializeRandomSimulation();
-		void initializeReplicateSimulation();
-		void initializeContinueSimulation();
-		void loadSeeds();
-		void loadLattice();
-		void loadDispersal();
-		void loadCompetition();
+		void initializeRandomSimulation(void);
+		void initializeReplicateSimulation(void);
+		void initializeContinueSimulation(void);
+		void loadSeeds(void);
+		void loadLattice(void);
+		void loadDispersal(void);
+		void loadCompetition(void);
 
 		// Allocation and random seed
-		std::mt19937& generateRandom();
-		unsigned int getRandom();
-		void allocSimulation();
-		void initializeLattice();
+		std::mt19937& generateRandom(void);
+		unsigned int getRandom(void);
+		void allocSimulation(void);
+		void initializeLattice(void);
 
 		// Read input and set random parameters
-		void checkInputFormat();
-		void seedGenerator();
-		int getParameter(int *value, std::string parameter_name, int essential);
-		void getParameter(double *value, std::string parameter_name, int essential);
-		void getParameter(std::string *value, std::string parameter_name, int essential);
-		void getParameter(int *value_array, int n, std::string parameter_name, int essential);
-		void getParameter(double *value_array, int n, std::string parameter_name, int essential);
-		void initializeNormalRandomArray(double *vector, double *mean, double *sdev, int length);
-		void setRandomParameter(double *intrinsic_fecundity, int num_species, std::string parameter_name, int type);
-		std::string trimString(std::string str);
-		std::string trimStringNoComment(std::string str);
+		void checkInputFormat(void);
+		void seedGenerator(void);
+		int getParameter(int & t_value, std::string t_parameter_name, int t_essential);
+		void getParameter(double & t_value, std::string t_parameter_name, int t_essential);
+		void getParameter(std::string & t_value, std::string t_parameter_name, int t_essential);
+		void getParameter(std::vector<int> & t_vector, std::string t_parameter_name, int t_essential);
+		void getParameter(std::vector<double> & t_vector, std::string t_parameter_name, int t_essential);
+		void initializeNormalRandomArray(std::vector<double> & t_vector, std::vector<double> & t_mean, std::vector<double> & t_sdev);
+		void setRandomParameter(std::vector<double> & t_vector, std::string t_parameter_name, int t_type);
+		std::string trimString(std::string t_string);
+		std::string trimStringNoComment(std::string t_string);
 
 		// Competition Initialization 
-		void initializeUniformCompetition();
-		void initializeTNormalCompetition();
-		void initializeUniformCorrelatedCompetition();
-		void initializeTNormalCorrelatedCompetition();
-		void imbalanceCompetition();
-		void setCompetitionTransitivity();
-		void setGrowthCompetitionTransitivity();
-		void shuffleArray(int *array, int n);		
-		void shuffleMatrix(double **array, int n);
+		void initializeUniformCompetition(void);
+		void initializeTNormalCompetition(void);
+		void initializeUniformCorrelatedCompetition(void);
+		void initializeTNormalCorrelatedCompetition(void);
+		void imbalanceCompetition(void);
+		void setCompetitionTransitivity(void);
+		void setGrowthCompetitionTransitivity(void);
+		void shuffleArray(std::vector<int> & t_vector);		
+		void shuffleMatrix(std::vector<std::vector<double>> & t_vector);
 		// Competition properties
-		void checkCorrelation();
-		void getSpeciesAbundance();
-		void getFecundityGrowthCorrelation();
-		void getImbalanceMean();
-		void getDiscreteTransitivity();
-		void getDiscreteFecundityTransitivity();
-		void getDiscreteGrowthTransitivity();
-		void getContinuousTransitivity();
+		void checkCorrelation(void);
+		void getSpeciesAbundance(void);
+		void getFecundityGrowthCorrelation(void);
+		void getImbalanceMean(void);
+		void getDiscreteTransitivity(void);
+		void getDiscreteFecundityTransitivity(void);
+		void getDiscreteGrowthTransitivity(void);
+		void getContinuousTransitivity(void);
 
 };
 
