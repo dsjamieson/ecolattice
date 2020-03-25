@@ -1,7 +1,7 @@
 
 	 /**********************************************************
 	 * ecolattice
-	 *						D.S Jamieson and N.L Kinlock, 2018			
+	 *						D.S Jamieson and N.L Kinlock, 2020			
 	 *
 	 *		methods for the Simulation class. read in parameters 
 	 *		used in simulations from file.
@@ -11,7 +11,8 @@
 #include "ecolattice.hpp"
 
 void Ecolattice::checkInputFormat(void) {
-	/* check 'parameters.dat' for all parameters and correct format. can remove commented lines from parameters file, where comments are specified with '#'. */
+	/* check 'parameters.dat' for all parameters and correct format. can remove commented lines from parameters file
+		where comments are specified with '#'. */
 
 	const char *names[] = {"LatticeSize", "Subdivision", "Species", "Delta", "MaxTimeStep", "InitialOccupancy",
 						  "GerminationProbability", "OutfileBase", "OutfileDir", "SpeciesOccupancy", "SpeciesOccupancySdev",

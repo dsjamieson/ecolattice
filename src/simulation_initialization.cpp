@@ -1,20 +1,20 @@
 
 	 /**********************************************************
 	 * ecolattice
-	 *			D.S Jamieson and N.L Kinlock, 2018			
+	 *						D.S Jamieson and N.L Kinlock, 2020			
 	 *
-	 *	 this file include methods for class Simulation.
-	 *	 these methods save the lattice (species locations)
-	 *	 and dispersal lattice (seed locations) for the current
-	 *	 time step. this is so that a failed simulation
-	 *	 does not have to start from the beginning.
+	 *	methods for Ecolattice class. allocate vectors for the 
+	 *	simulation and initializes simulation parameters and lattice.
+	 *	includes methods for the various types of simulations:
+	 *	random (default), continue, repeat, and replicate.
 	 *
 	 ***********************************************************/
 
 #include "ecolattice.hpp"
 
 void Ecolattice::allocSimulation() {
-	/* allocate memory for all arrays used in simulations, including parameter arrays, lattice with species locations, and dispersal lattice with seed locations. */
+	/* allocate memory for all vectors used in simulations, including parameter arrays, 
+		lattice with species locations, and dispersal lattice with seed locations. */
 
 	species_abundance.resize(num_species, 0);
 	delta.resize(num_species, 0);

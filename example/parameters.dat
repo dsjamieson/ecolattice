@@ -1,3 +1,4 @@
+NumThreads = 1					# Number of OMP threads for parallel computation
 LatticeSize = 20 				# Number of lattice sites along one direction
 Species = 5						# Number of species 
 MaxTimeStep = 100				# Final time step of simulation
@@ -7,8 +8,8 @@ OutfileBase = test				# Initial string in output filenames
 OutfileDir = test_dir			# Directory for output files
 Delta = 1 						# Distance (in cells) of neighborhood for each species, must be positive integer
 MinPersistence = 2				# Minimum number of extant species before simulation restarts itself
-CompetitionFile = 				# Filename for competition used for restart or replicate simulations
-RestartTime = 					# Time step read in to restart a simulation, must be greater than 0
+CompetitionFile = 				# Filename for competition used for replicate, repeated, or continued simulations
+ContinueTime = 					# Time step read in to repeat a simulation (0) or to continue a simulation (greater than 0)
 
 # Sdev optional. Each parameter may have either (1) only one value or (2) number of species values separated by spaces
 SpeciesOccupancy = 1. 		# Initial fraction of sites occupied by each species, weights
