@@ -8,9 +8,9 @@
 	 *
 	 ***********************************************************/
 
-#include "simulation.hpp"
+#include "ecolattice.hpp"
 
-void Simulation::checkInputFormat(void) {
+void Ecolattice::checkInputFormat(void) {
 	/* check 'parameters.dat' for all parameters and correct format. can remove commented lines from parameters file, where comments are specified with '#'. */
 
 	const char *names[] = {"LatticeSize", "Subdivision", "Species", "Delta", "MaxTimeStep", "InitialOccupancy",
@@ -86,32 +86,7 @@ void Simulation::checkInputFormat(void) {
 	return;
 }
 
-
-void Simulation::setRandomSeeds(void) {
-	/* draw random seeds from random device (5) and system clock (1). system clock used for systems 
-	that do not have random device capability. */
-
-	int i;
-	std::random_device r;
-	seeds[0] = static_cast<unsigned int>(std::chrono::high_resolution_clock::now().time_since_epoch().count());
-	for (i = 1; i < 5; i++)
-		seeds[i] = (unsigned int) r(); 
-
-	return;
-}
-
-void Simulation::seedGenerator(void) {
-	/* create a random vector of seeds (a seed sequence) given the seeds specified randomly or in
-	the parameter file (restart simulation). seeds fed to the global RNG. */
-    std::seed_seq seq(seeds, seeds + 5);
-	std::vector<std::uint32_t> seed_vector(std::mt19937::state_size);
-    seq.generate(seed_vector.begin(), seed_vector.end());
-	std::seed_seq seq2(seed_vector.begin(), seed_vector.end());
-	global_random_generator.seed(seq2);
-	return;
-}
-
-int Simulation::getParameter(int & value, std::string parameter_name, int essential ) {
+int Ecolattice::getParameter(int & value, std::string parameter_name, int essential ) {
 	/* sets value of parameter given the parameter name in parameter file, 'parameter.dat' 
 	file is already open from previous method, checkInputFormat. method for integer parameters. */
 
@@ -175,8 +150,7 @@ int Simulation::getParameter(int & value, std::string parameter_name, int essent
 	return set;
 }
 
-
-void Simulation::getParameter(double & value, std::string parameter_name, int essential) {
+void Ecolattice::getParameter(double & value, std::string parameter_name, int essential) {
 	/* sets value of parameter given the parameter name in parameter file, 'parameter.dat' 
 	file is already open from previous method, checkInputFormat. method for double parameters. */
 
@@ -250,8 +224,7 @@ void Simulation::getParameter(double & value, std::string parameter_name, int es
 
 }
 
-
-void Simulation::getParameter(std::string & value, std::string parameter_name, int essential) {
+void Ecolattice::getParameter(std::string & value, std::string parameter_name, int essential) {
 	/* sets value of parameter given the parameter name in parameter file, 'parameter.dat' 
 	file is already open from previous method, checkInputFormat. method for string parameters. */
 
@@ -305,7 +278,7 @@ void Simulation::getParameter(std::string & value, std::string parameter_name, i
 }
 
 
-void Simulation::getParameter(std::vector<int> & value_array, std::string parameter_name, int essential) {
+void Ecolattice::getParameter(std::vector<int> & value_array, std::string parameter_name, int essential) {
 	/* sets value of parameter given the name in parameter file, which is an argument for Simulation.
 	file is already open from previous method, checkInputFormat. method for array parameters.
 	this method has some unique requirements, some arrays require positive integers [0, ) (essential
@@ -403,8 +376,7 @@ void Simulation::getParameter(std::vector<int> & value_array, std::string parame
 	return;
 }
 
-
-void Simulation::getParameter(std::vector<double> & value_array, std::string parameter_name, int essential) {
+void Ecolattice::getParameter(std::vector<double> & value_array, std::string parameter_name, int essential) {
 	/* sets value of parameter given the name in parameter file, which is an argument for Simulation.
 	file is already open from previous method, checkInputFormat. method for array parameters.
 	this method has some unique requirements, some arrays require probabilities [0, 1] (essential
@@ -527,83 +499,33 @@ void Simulation::getParameter(std::vector<double> & value_array, std::string par
 	return;
 }
 
-
-
-void Simulation::initializeNormalRandomArray(std::vector<double> & array, std::vector<double> & mean, std::vector<double> & sdev) {
-	/* for parameters that are parameters of a normal distribution (e.g. intrinsic fecundity). 
-	this method takes draws from normal distributions defined by the mean and standard deviation arrays. */
-
-	unsigned long i;
-	for (i = 0; i < array.size(); i++)
-		array[i] = fabs(getRandomNormal(mean[i], sdev[i]));
-
-	return;
-
-}
-
-
-void Simulation::setRandomParameter(std::vector<double> & parameter_value, std::string parameter_name, int type) {
-	/* some parameters in the data file  are specified as parameters of a normal distribution (e.g., intrinsic fecundity). 
-	this method initializes the mean and standard deviation arrays to be sent to the method 'initializeNormalArray' which 
-	will initialize the actual array of random draws. this method is specific to parameters that are probabilities. */
-
-	// type = 0 -> not essential, does not need to be set in parameter file
-	// type = 1 -> essential, must be set in parameter file
-	// type = 2 -> essential, all values must be between 0 and 1
-	// type = 3 -> essential, treated as weights
-	// type = 4 -> essential, must be non-negative
-
-	std::vector<double> mean(num_species, 0.);
-	std::vector<double> sdev(num_species, 0.);
-	getParameter(mean, parameter_name, type);
-	getParameter(sdev, parameter_name + "Sdev", 0);
-
-	initializeNormalRandomArray(parameter_value, mean, sdev);
-
-	return;
-
-}
-
-
-std::string Simulation::trimString(std::string str) {
-
+std::string Ecolattice::trimString(std::string str) {
 	std::string hold;
-	int str_start;
-	int str_end;
-	int comment_entry;
-
+	int str_start, str_end, comment_entry;
 	str_end = str.size();
 	for (comment_entry = 0; comment_entry < str_end; comment_entry++) {
 		if (str[comment_entry]=='#')
 			break;
 	}
 	hold = str.substr(0, comment_entry);
-	
 	str_start = 0;
 	str_end = hold.size();
-
 	while (isspace(hold[str_start]))
 		str_start++;
 	while (isspace(hold[str_end - 1]))
 		str_end--;
-
 	return hold.substr(str_start, str_end - str_start);
 }
 
-
-std::string Simulation::trimStringNoComment(std::string str) {
-
+std::string Ecolattice::trimStringNoComment(std::string str) {
 	int str_start;
 	int str_end;
-
 	str_start = 0;
 	str_end = str.size();
-
 	while (isspace(str[str_start]))
 		str_start++;
 	while (isspace(str[str_end - 1]))
 		str_end--;
-
 	return str.substr(str_start, str_end - str_start);
 } 
 
