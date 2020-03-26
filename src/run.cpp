@@ -37,16 +37,15 @@ void Ecolattice::run(void) {
 		int i, j;
 		#pragma omp single
 		{
+			// whenever end time is set, start time is reset
 			t_end = std::chrono::steady_clock::now();
 			duration = (t_end - t_start) / 1000.;
+			t_start = std::chrono::steady_clock::now();
 			fprintf(stdout, "Done setting up RNGs in %.4f seconds\n", duration.count());
 			fprintf(stdout, "Starting at time step %d\n", start_time);
 		}
 		// iterate through time steps (each thread goes through same time steps)
 		for (int time_step = start_time; time_step < max_time_step + 1; time_step++) {
-			// set start time for time step
-			#pragma omp single
-			t_start = std::chrono::steady_clock::now();
 
 			// parallelized: distribute sites in lattice among threads
 			// must be monotonic--site index must only ever increase because of discardRandom
@@ -58,6 +57,9 @@ void Ecolattice::run(void) {
 				// update single site in 'next_lattice' and 'next_dispersal_lattice'
 				stepper.updateSingleSite(i, j, time_step);
 			}
+			// species and seed locations in 'next_lattice' and 'next_dispersal_lattice' are converted to locations in 'lattice' and 'dispersal_lattice'
+			// t + 1 becomes t for the next time step
+			nextToThis();
 			// one thread calculates persistence
 			#pragma omp single
 			persistence = getPersistence();  // get the number of species currently coexisting in the lattice
@@ -70,29 +72,38 @@ void Ecolattice::run(void) {
 					// save new initial state
 					saveCompetition();
 					saveLattice(0);
-					persistence = 0;
 				}
 				// pass new seeds to each thread's SiteStepper RNG
-				stepper.initializeRandomGenerator();
+				stepper.loadEcolattice();
 				time_step = 0;
 			}
 			else {
-				// species and seed locations in 'next_lattice' and 'next_dispersal_lattice' are converted to locations in 'lattice' and 'dispersal_lattice'
-				// t + 1 becomes t for the next time step
-				nextToThis();
 				// write species locations to file
 				#pragma omp single nowait
 				saveLattice(time_step);
 				saveDispersal(time_step);
 				#pragma omp single
 				{
-					t_end = std::chrono::steady_clock::now();
-					duration = (t_end - t_start) / 1000.;
-					fprintf(stdout, "Done step %d of %d in %.4f seconds\n", time_step, max_time_step, duration.count());
+					if (time_step % 10 == 0) {
+						t_end = std::chrono::steady_clock::now();
+						duration = (t_end - t_start) / 1000.;
+						t_start = std::chrono::steady_clock::now();
+						fprintf(stdout, "Done step %d of %d in %.4f seconds", time_step, max_time_step, duration.count()); fflush(stdout);
+						printSpeciesAbundance();
+					}
 				}
 			}
 		}
 	}
+	return;
+}
+
+void Ecolattice::printSpeciesAbundance(void) {
+	fprintf(stdout, " Abundances: [");
+	for (int i = 0; i < num_species; i++) {
+		fprintf(stdout, " %d", species_abundance[i]);
+	}
+	fprintf(stdout, " ]\n");
 	return;
 }
 
@@ -137,9 +148,11 @@ void Ecolattice::reinitializeSimulation(int time_step) {
 
 	// delete previously written output files if simulation is being reinitialized after persistence is too low
 	if (id == 0) {
-		std::string fname;
+		num_restarts++;
+		std::string fname, new_fname;
 			fname = outfile_base + "_competition.csv";
-			remove(fname.c_str());
+			new_fname = outfile_base + "_failed_competition_" + std::to_string(num_restarts) + ".csv";
+			rename(fname.c_str(), new_fname.c_str());
 		for (int i = 0; i < time_step; i++) {
 			fname = outfile_base+"_" + std::to_string(i) + ".csv";
 			remove(fname.c_str());
@@ -150,25 +163,45 @@ void Ecolattice::reinitializeSimulation(int time_step) {
 			fname = outfile_base + "_dispersal_s" + std::to_string(i) + "_1.csv";
 			remove(fname.c_str());
 		}
-		num_restarts++;
 	}
 
 	// draw new random seeds and reset random count
 	drawRandomSeeds();
 	random_count = 0;
 
-	if (competition_filename.size() == 0 || continue_time != 0)
+	if (initialization_scheme != 3) {
 		// new simulation
 		initializeRandomSimulation();
-	else if (continue_time == 0)
+	}
+	else {
 		// replicate simulation
 		initializeReplicateSimulation();
+	}
 
 	// calculate properties of pairwise and community-level interactions
 	getSpeciesAbundance();
 	getImbalanceMean();
 	getDiscreteTransitivity();
 	getFecundityGrowthCorrelation();
+
+	// checks for failure, e.g., does calculated transitivity match specified transitivity
+	if (fecundity_relative_intransitivity != 1. && fecundity_transitivity_type == -1.) {
+		fprintf(stderr, "Error, setting transitivity type failed\n");
+		exit(0);
+	}
+	else if (fecundity_relative_intransitivity != 0. && fecundity_transitivity_type == 1.) {
+		fprintf(stderr, "Error, setting transitivity type failed\n");
+		exit(0);
+	}
+	if (growth_relative_intransitivity != 1. && growth_transitivity_type == -1.) {
+		fprintf(stderr, "Error, setting transitivity type failed\n");
+		exit(0);
+	}
+	else if (growth_relative_intransitivity != 0. && growth_transitivity_type == 1.) {
+		fprintf(stderr, "Error, setting transitivity type failed\n");
+		exit(0);
+	}
+
 	// RNG is set to jump ahead to the maximum number of random draws that could have already been used by the RNG when initializing the simulation
 	unsigned long long max_random_count = 1000. * (4. * num_species * num_species + 5. * lattice_size * (unsigned long long) lattice_size);
 

@@ -13,12 +13,19 @@
 void Ecolattice::drawRandomSeeds(void) {
 	/* draw random seeds from random device (5) and system clock (1). system clock used for systems 
 	that do not have random device capability. */
+	
 	int i;
-	std::random_device r;
-	seeds[0] = static_cast<unsigned int>(std::chrono::high_resolution_clock::now().time_since_epoch().count());
-	for (i = 1; i < 5; i++)
-		seeds[i] = (unsigned int) r(); 
-
+	if (num_restarts == 0) {
+		std::random_device r;
+		seeds[0] = static_cast<unsigned int>(std::chrono::high_resolution_clock::now().time_since_epoch().count());
+		for (i = 1; i < 5; i++)
+			seeds[i] = (unsigned int) r(); 
+	}
+	else {
+		for (i = 0; i < 5; i++) {
+			seeds[i] = getRandom();
+		}
+	}
 	return;
 }
 

@@ -9,7 +9,7 @@ class SiteStepper {
 		// constructor and method for running
 		SiteStepper(Ecolattice & t_sim);
 		void updateSingleSite(int t_i, int t_j, int t_time_step);
-		void initializeRandomGenerator(void);
+		void loadEcolattice(void);
 
 	private:
 		// objects and counter inherited from Ecolattice object using Ecolattice::run
@@ -49,6 +49,7 @@ class SiteStepper {
 		void updateJuvenileSite(void);
 		void disperseSeeds(void);
 		// random number generation methods
+		void initializeRandomGenerator(void);
 		std::mt19937& generateRandom(void);
 		void discardRandom(unsigned long long t_num_discard);
 

@@ -47,7 +47,7 @@ class Ecolattice {
 		std::vector<int> species_abundance;
 		std::mt19937 global_random_generator;
 		std::string parameter_filename, outfile_base, outfile_dir;
-		int id, num_species, lattice_size, num_steps, max_time_step, continue_time, min_persistence, num_restarts, num_threads;
+		int id, num_species, lattice_size, num_steps, max_time_step, continue_time, min_persistence, num_restarts, num_threads, initialization_scheme;
 		unsigned long long random_count, max_random_count;
 		double germination_probability, initial_occupancy;
 		std::vector<std::vector<int>> lattice, next_lattice;
@@ -113,6 +113,7 @@ class Ecolattice {
 		void shuffleMatrix(std::vector<std::vector<double>> & t_vector);
 		// competition properties (competition_analyzation)
 		void getSpeciesAbundance(void);
+		void printSpeciesAbundance(void);
 		void getFecundityGrowthCorrelation(void);
 		void getImbalanceMean(void);
 		void getDiscreteTransitivity(void);
@@ -123,6 +124,9 @@ class Ecolattice {
 		int getPersistence(void);
 		void nextToThis(void);
 		void reinitializeSimulation(int t_time_step);
+		
+		// debug
+		void compareSpeciesAbundance(void);
 
 };
 

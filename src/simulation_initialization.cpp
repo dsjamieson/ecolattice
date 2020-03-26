@@ -213,7 +213,7 @@ void Ecolattice::initializeRandomSimulation() {
 	if (imbalance != 0.5)
 		imbalanceCompetition();
 	// if competition is transitive (community forms a hierarchy) or intransitive (community has loops breaking hierarchy)
-	if (fecundity_transitivity_type != 0 || growth_transitivity_type!=0)
+	if (fecundity_transitivity_type != 0 || growth_transitivity_type != 0)
 		setCompetitionTransitivity();
 
 	// RNG discard after drawing random parameters, as some use rejection sampling

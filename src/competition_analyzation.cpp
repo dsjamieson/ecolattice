@@ -17,12 +17,10 @@ void Ecolattice::getSpeciesAbundance(void) {
   	   and decrementSpeciesAbundance methods in the SiteStepper class. */
 	for (int i = 0; i < num_species; i++)
 		species_abundance[i] = 0;
-	#pragma omp parallel for
 	for (int i = 0; i < lattice_size; i++) {
 		for (int j = 0; j < lattice_size; j++) {
 			int s = abs(lattice[i][j]);
 			if (s != 0) {
-				#pragma omp atomic
 				species_abundance[s - 1]++;
 			}
 		}

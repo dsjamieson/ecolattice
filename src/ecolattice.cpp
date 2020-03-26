@@ -132,10 +132,11 @@ Ecolattice::Ecolattice(std::string filename, int p_id) {
 
 	// different types of simulations can be initialized: restart, continue, replicate, or random (default)
 	if (competition_filename.size() != 0) {
-		if(continue_time == 0) {
+		if (continue_time == 0) {
 			// rerun identical simulation with pre-defined seeds (restart simulation)
 			// uses seeds from competition file
 			fprintf(stdout, "Initializing restarted simulation\n");
+			initialization_scheme = 1;
 			loadSeeds();
 			initializeRandomSimulation();
 		}
@@ -143,12 +144,14 @@ Ecolattice::Ecolattice(std::string filename, int p_id) {
 			// continue a previous failed simulation or extend a previous simulation (continue simulation)
 			// uses seeds from competition file
 			fprintf(stdout, "Initializing continuation of previous simulation\n");
+			initialization_scheme = 2;
 			initializeContinueSimulation();
 		}
 		else {
 			// run simulation with pre-defined competition parameters but new initial conditions (replicate simulation)
 			continue_time = 0;
 			fprintf(stdout, "Initializing a replicate simulation\n");
+			initialization_scheme = 3;
 			initializeReplicateSimulation();
 		}
 	}
@@ -156,6 +159,7 @@ Ecolattice::Ecolattice(std::string filename, int p_id) {
 		// start a new simulation
 		continue_time = 0;
 		fprintf(stdout, "Initializing new simulation\n");
+		initialization_scheme = 0;
 		initializeRandomSimulation();
 	}
 

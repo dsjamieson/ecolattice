@@ -17,8 +17,12 @@ SiteStepper::SiteStepper(Ecolattice & t_sim) {
 
 	// pointer to Ecolattice
 	sim = &t_sim;
-	max_random_count = sim->getMaxRandomCount();
+	loadEcolattice();
+}
+
+void SiteStepper::loadEcolattice(void) {
 	// RNG is only accesses within SiteStepper object, and is set up here
+	max_random_count = sim->getMaxRandomCount();
 	initializeRandomGenerator();
 	// access simulation object to get important parameters
 	num_species = sim->getNumSpecies();
@@ -38,6 +42,8 @@ SiteStepper::SiteStepper(Ecolattice & t_sim) {
 	} 
 	initializeDispersals();
 	initializeCompetition();
+
+	return;
 }
 
 void SiteStepper::initializeRandomGenerator(void) {
